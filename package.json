@@ -1,0 +1,41 @@
+{
+  "name": "snapeat",
+  "version": "1.0.0",
+  "description": "AI-powered Multi-platform Nutrition Tracking System",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "backend:dev": "npm run dev --workspace=apps/backend",
+    "ai:dev": "cd apps/ai-service && python -m uvicorn main:app --reload",
+    "web:dev": "npm run dev --workspace=apps/web",
+    "mobile:dev": "npm run start --workspace=apps/mobile",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "prisma:migrate": "npm run prisma:migrate --workspace=apps/backend",
+    "prisma:generate": "npm run prisma:generate --workspace=apps/backend"
+  },
+  "keywords": [
+    "nutrition",
+    "ai",
+    "health",
+    "tracking",
+    "nestjs",
+    "react",
+    "react-native",
+    "fastapi"
+  ],
+  "author": "SnapEat Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.45.0",
+    "typescript": "^5.1.6"
+  }
+}

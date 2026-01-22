@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  profile   UserProfile?
+  meals     Meal[]
+  mealPlans MealPlan[]
+  progress  Progress[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model UserProfile {
+  id            String        @id @default(uuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName     String?
+  lastName      String?
+  age           Int?
+  gender        String?
+  height        Float?        // in cm
+  weight        Float?        // in kg
+  activityLevel ActivityLevel?
+  goal          Goal?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("user_profiles")
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHTLY_ACTIVE
+  MODERATELY_ACTIVE
+  VERY_ACTIVE
+  EXTRA_ACTIVE
+}
+
+enum Goal {
+  LOSE_WEIGHT
+  MAINTAIN_WEIGHT
+  GAIN_WEIGHT
+  BUILD_MUSCLE
+}
+
+model Meal {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  type           MealType
+  foods          Json     // Array of FoodItem
+  totalCalories  Float
+  totalProtein   Float
+  totalCarbs     Float
+  totalFat       Float
+  imageUrl       String?
+  consumedAt     DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("meals")
+  @@index([userId, consumedAt])
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model MealPlan {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  startDate     DateTime
+  endDate       DateTime
+  dailyCalories Float
+  dailyMacros   Json     // MacroDistribution
+  meals         Json     // Array of PlannedMeal
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("meal_plans")
+  @@index([userId])
+}
+
+model Progress {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime
+  weight          Float?
+  caloriesConsumed Float
+  proteinConsumed  Float
+  carbsConsumed    Float
+  fatConsumed      Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("progress")
+  @@unique([userId, date])
+  @@index([userId, date])
+}
