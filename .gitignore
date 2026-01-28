@@ -141,7 +141,6 @@ vite.config.ts.timestamp-*
 # Prisma
 *.db
 *.db-journal
-prisma/migrations/
 
 # Python
 __pycache__/
