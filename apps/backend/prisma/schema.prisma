@@ -26,19 +26,21 @@ model User {
 }
 
 model UserProfile {
-  id            String        @id @default(uuid())
-  userId        String        @unique
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  firstName     String?
-  lastName      String?
-  age           Int?
-  gender        String?
-  height        Float?        // in cm
-  weight        Float?        // in kg
-  activityLevel ActivityLevel?
-  goal          Goal?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                String        @id @default(uuid())
+  userId            String        @unique
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName         String?
+  lastName          String?
+  age               Int?
+  gender            String?
+  height            Float?        // in cm
+  weight            Float?        // in kg
+  activityLevel     ActivityLevel?
+  goal              Goal?
+  calories          Float?        // manual daily caloric intake override
+  proteinPercentage Float?        // protein percentage of daily calories
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   @@map("user_profiles")
 }

@@ -56,4 +56,14 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsEnum(Goal)
   goal?: Goal;
+
+  @ApiProperty({ required: false, example: 2700, description: 'Manual daily caloric intake override' })
+  @IsOptional()
+  @IsNumber()
+  calories?: number;
+
+  @ApiProperty({ required: false, example: 30, description: 'Protein percentage of daily calories (0-100)' })
+  @IsOptional()
+  @IsNumber()
+  proteinPercentage?: number;
 }

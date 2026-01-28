@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { tdeeApi } from '../services/api'
 
@@ -17,7 +17,25 @@ export default function Profile() {
     weight: '',
     activityLevel: 'MODERATELY_ACTIVE',
     goal: 'MAINTAIN_WEIGHT',
+    calories: '',
+    proteinPercentage: '',
   })
+
+  // Calculate protein in grams
+  const proteinGrams = useMemo(() => {
+    const calories = parseFloat(formData.calories)
+    const proteinPct = parseFloat(formData.proteinPercentage)
+    
+    if (isNaN(calories) || isNaN(proteinPct) || calories <= 0 || proteinPct <= 0 || proteinPct > 100) {
+      return null
+    }
+    
+    // Calculate: (calories × protein% / 100) / 4 calories per gram
+    const proteinCalories = (calories * proteinPct) / 100
+    const grams = proteinCalories / 4
+    
+    return grams.toFixed(1)
+  }, [formData.calories, formData.proteinPercentage])
 
   const updateProfile = useMutation({
     mutationFn: tdeeApi.updateProfile,
@@ -29,12 +47,24 @@ export default function Profile() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    updateProfile.mutate({
+    
+    // Prepare data for submission
+    const submitData: any = {
       ...formData,
       age: parseInt(formData.age),
       height: parseFloat(formData.height),
       weight: parseFloat(formData.weight),
-    })
+    }
+    
+    // Add optional fields if they have values
+    if (formData.calories) {
+      submitData.calories = parseFloat(formData.calories)
+    }
+    if (formData.proteinPercentage) {
+      submitData.proteinPercentage = parseFloat(formData.proteinPercentage)
+    }
+    
+    updateProfile.mutate(submitData)
   }
 
   return (
@@ -123,6 +153,47 @@ export default function Profile() {
                 <option value="GAIN_WEIGHT">Gain Weight</option>
                 <option value="BUILD_MUSCLE">Build Muscle</option>
               </select>
+            </div>
+            <div>
+              <label>Daily Caloric Intake (kcal)</label>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={formData.calories}
+                onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
+                placeholder="e.g., 2700"
+              />
+              <small style={{ color: '#666', fontSize: '0.85rem' }}>
+                Optional: Override calculated calories
+              </small>
+            </div>
+            <div>
+              <label>Protein (%)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="100"
+                value={formData.proteinPercentage}
+                onChange={(e) => setFormData({ ...formData, proteinPercentage: e.target.value })}
+                placeholder="e.g., 30"
+              />
+              {proteinGrams && (
+                <div style={{ 
+                  marginTop: '8px', 
+                  padding: '8px', 
+                  backgroundColor: '#e3f2fd', 
+                  borderRadius: '4px',
+                  color: '#1976d2',
+                  fontSize: '0.9rem'
+                }}>
+                  <strong>Calculated Protein:</strong> {proteinGrams} grams
+                </div>
+              )}
+              <small style={{ color: '#666', fontSize: '0.85rem', display: 'block', marginTop: '4px' }}>
+                Enter percentage of daily calories from protein
+              </small>
             </div>
           </div>
           <button type="submit" className="primary" style={{ marginTop: '20px' }}>
