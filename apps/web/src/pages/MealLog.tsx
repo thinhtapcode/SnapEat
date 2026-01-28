@@ -54,14 +54,26 @@ export default function MealLog() {
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate numeric values
+    const calories = parseFloat(formData.totalCalories)
+    const protein = parseFloat(formData.totalProtein)
+    const carbs = parseFloat(formData.totalCarbs)
+    const fat = parseFloat(formData.totalFat)
+    
+    if (isNaN(calories) || isNaN(protein) || isNaN(carbs) || isNaN(fat)) {
+      alert('Please enter valid numbers for all nutrition fields')
+      return
+    }
+    
     createMeal.mutate({
       name: formData.name,
       type: formData.type,
       foods: [],
-      totalCalories: parseFloat(formData.totalCalories),
-      totalProtein: parseFloat(formData.totalProtein),
-      totalCarbs: parseFloat(formData.totalCarbs),
-      totalFat: parseFloat(formData.totalFat),
+      totalCalories: calories,
+      totalProtein: protein,
+      totalCarbs: carbs,
+      totalFat: fat,
       imageUrl: selectedImage || undefined,
     })
   }
@@ -70,8 +82,22 @@ export default function MealLog() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      alert('Image file is too large. Please select an image smaller than 5MB.')
+      return
+    }
+
     // Convert to base64 for preview and AI analysis
     const reader = new FileReader()
+    
+    reader.onerror = () => {
+      console.error('Error reading file')
+      alert('Failed to read the image file. Please try again.')
+      setIsAnalyzing(false)
+    }
+    
     reader.onload = async (event) => {
       const base64Image = event.target?.result as string
       setSelectedImage(base64Image)
@@ -105,7 +131,7 @@ export default function MealLog() {
         }
       } catch (error: any) {
         console.error('Error analyzing image:', error)
-        alert(`Error analyzing image: ${error.message || 'Unknown error'}`)
+        alert('Failed to analyze the image. Please try again or enter meal details manually.')
       } finally {
         setIsAnalyzing(false)
       }
@@ -137,9 +163,10 @@ export default function MealLog() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           onChange={handleImageUpload}
           style={{ display: 'none' }}
+          aria-label="Upload food image for AI analysis"
         />
         
         <div style={{ marginTop: '15px' }}>
@@ -164,7 +191,7 @@ export default function MealLog() {
             <h4>Image Preview:</h4>
             <img 
               src={selectedImage} 
-              alt="Food preview" 
+              alt="Uploaded food image for nutritional analysis" 
               style={{ 
                 maxWidth: '100%', 
                 maxHeight: '300px', 
@@ -260,6 +287,7 @@ export default function MealLog() {
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
                   value={formData.totalCalories}
                   onChange={(e) => setFormData({ ...formData, totalCalories: e.target.value })}
                   placeholder="e.g., 450"
@@ -271,6 +299,7 @@ export default function MealLog() {
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
                   value={formData.totalProtein}
                   onChange={(e) => setFormData({ ...formData, totalProtein: e.target.value })}
                   placeholder="e.g., 35"
@@ -282,6 +311,7 @@ export default function MealLog() {
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
                   value={formData.totalCarbs}
                   onChange={(e) => setFormData({ ...formData, totalCarbs: e.target.value })}
                   placeholder="e.g., 25"
@@ -293,6 +323,7 @@ export default function MealLog() {
                 <input
                   type="number"
                   step="0.1"
+                  min="0"
                   value={formData.totalFat}
                   onChange={(e) => setFormData({ ...formData, totalFat: e.target.value })}
                   placeholder="e.g., 18"

@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { mealPlanApi, tdeeApi } from '../services/api'
 
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
 export default function MealPlan() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date(Date.now() + ONE_WEEK_MS).toISOString().split('T')[0],
     dailyCalories: '',
     protein: '',
     carbs: '',
@@ -36,7 +38,7 @@ export default function MealPlan() {
       setFormData({
         name: '',
         startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        endDate: new Date(Date.now() + ONE_WEEK_MS).toISOString().split('T')[0],
         dailyCalories: '',
         protein: '',
         carbs: '',
@@ -45,21 +47,43 @@ export default function MealPlan() {
       alert('Meal plan created successfully!')
     },
     onError: (error: any) => {
-      alert(`Error creating meal plan: ${error.response?.data?.message || error.message}`)
+      console.error('Error creating meal plan:', error)
+      alert('Failed to create meal plan. Please try again.')
     },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate date range
+    const startDate = new Date(formData.startDate)
+    const endDate = new Date(formData.endDate)
+    
+    if (endDate <= startDate) {
+      alert('End date must be after start date')
+      return
+    }
+    
+    // Validate numeric values
+    const calories = parseFloat(formData.dailyCalories)
+    const protein = parseFloat(formData.protein)
+    const carbs = parseFloat(formData.carbs)
+    const fat = parseFloat(formData.fat)
+    
+    if (isNaN(calories) || isNaN(protein) || isNaN(carbs) || isNaN(fat)) {
+      alert('Please enter valid numbers for all nutrition fields')
+      return
+    }
+    
     createPlan.mutate({
       name: formData.name,
       startDate: formData.startDate,
       endDate: formData.endDate,
-      dailyCalories: parseFloat(formData.dailyCalories),
+      dailyCalories: calories,
       dailyMacros: {
-        protein: parseFloat(formData.protein),
-        carbs: parseFloat(formData.carbs),
-        fat: parseFloat(formData.fat),
+        protein,
+        carbs,
+        fat,
       },
     })
   }
@@ -80,7 +104,7 @@ export default function MealPlan() {
     setFormData({
       name: `${plan.name} (Copy)`,
       startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      endDate: new Date(Date.now() + ONE_WEEK_MS).toISOString().split('T')[0],
       dailyCalories: plan.dailyCalories?.toString() || '',
       protein: plan.dailyMacros?.protein?.toString() || '',
       carbs: plan.dailyMacros?.carbs?.toString() || '',
@@ -188,6 +212,7 @@ export default function MealPlan() {
                 <label>Protein (g)</label>
                 <input
                   type="number"
+                  min="0"
                   value={formData.protein}
                   onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
                   placeholder="e.g., 150"
@@ -198,6 +223,7 @@ export default function MealPlan() {
                 <label>Carbs (g)</label>
                 <input
                   type="number"
+                  min="0"
                   value={formData.carbs}
                   onChange={(e) => setFormData({ ...formData, carbs: e.target.value })}
                   placeholder="e.g., 200"
@@ -208,6 +234,7 @@ export default function MealPlan() {
                 <label>Fat (g)</label>
                 <input
                   type="number"
+                  min="0"
                   value={formData.fat}
                   onChange={(e) => setFormData({ ...formData, fat: e.target.value })}
                   placeholder="e.g., 65"
