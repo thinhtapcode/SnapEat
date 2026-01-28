@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsEnum, IsOptional, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 enum ActivityLevel {
@@ -60,10 +60,13 @@ export class UpdateProfileDto {
   @ApiProperty({ required: false, example: 2700, description: 'Manual daily caloric intake override' })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   calories?: number;
 
   @ApiProperty({ required: false, example: 30, description: 'Protein percentage of daily calories (0-100)' })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   proteinPercentage?: number;
 }

@@ -26,7 +26,7 @@ export default function Profile() {
     const calories = parseFloat(formData.calories)
     const proteinPct = parseFloat(formData.proteinPercentage)
     
-    if (isNaN(calories) || isNaN(proteinPct) || calories <= 0 || proteinPct <= 0 || proteinPct > 100) {
+    if (isNaN(calories) || isNaN(proteinPct) || calories < 0 || proteinPct < 0 || proteinPct > 100) {
       return null
     }
     
@@ -49,19 +49,40 @@ export default function Profile() {
     e.preventDefault()
     
     // Prepare data for submission
-    const submitData: any = {
-      ...formData,
+    const submitData: {
+      firstName: string;
+      lastName: string;
+      age: number;
+      gender: string;
+      height: number;
+      weight: number;
+      activityLevel: string;
+      goal: string;
+      calories?: number;
+      proteinPercentage?: number;
+    } = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
       age: parseInt(formData.age),
+      gender: formData.gender,
       height: parseFloat(formData.height),
       weight: parseFloat(formData.weight),
+      activityLevel: formData.activityLevel,
+      goal: formData.goal,
     }
     
-    // Add optional fields if they have values
-    if (formData.calories) {
-      submitData.calories = parseFloat(formData.calories)
+    // Add optional fields if they have valid values
+    if (formData.calories && formData.calories.trim()) {
+      const caloriesValue = parseFloat(formData.calories)
+      if (!isNaN(caloriesValue) && caloriesValue > 0) {
+        submitData.calories = caloriesValue
+      }
     }
-    if (formData.proteinPercentage) {
-      submitData.proteinPercentage = parseFloat(formData.proteinPercentage)
+    if (formData.proteinPercentage && formData.proteinPercentage.trim()) {
+      const proteinPctValue = parseFloat(formData.proteinPercentage)
+      if (!isNaN(proteinPctValue) && proteinPctValue >= 0 && proteinPctValue <= 100) {
+        submitData.proteinPercentage = proteinPctValue
+      }
     }
     
     updateProfile.mutate(submitData)
