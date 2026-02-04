@@ -7,12 +7,14 @@ import {
   Param,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { MealPlanService } from './meal-plan.service';
 import { CreateMealPlanDto, UpdateMealPlanDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+
 
 @ApiTags('meal-plans')
 @ApiBearerAuth()
@@ -26,6 +28,15 @@ export class MealPlanController {
   @ApiResponse({ status: 201, description: 'Meal plan created successfully' })
   create(@GetUser('id') userId: string, @Body() dto: CreateMealPlanDto) {
     return this.mealPlanService.create(userId, dto);
+  }
+  @Post(':id/apply')
+  @ApiOperation({ summary: 'Apply a meal plan template to current user profile' })
+  @ApiResponse({ status: 200, description: 'User profile updated with plan macros' })
+  async apply(
+    @Param('id') id: string, 
+    @GetUser('id') userId: string // Dùng Decorator này cho đồng bộ với findAll, create...
+  ) {
+    return this.mealPlanService.applyTemplateToUser(userId, id)
   }
 
   @Get()
@@ -69,4 +80,5 @@ export class MealPlanController {
   remove(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.mealPlanService.remove(id, userId);
   }
+  
 }

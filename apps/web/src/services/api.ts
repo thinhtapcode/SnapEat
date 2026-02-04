@@ -47,6 +47,13 @@ export const mealApi = {
     const { data } = await api.get('/meals/daily-summary', { params: { date } })
     return data
   },
+
+  searchFoodLibrary: async (query: string) => {
+    const { data } = await api.get('/meals/food-library/search', { 
+      params: { q: query } 
+    })
+    return data
+  },
 }
 
 // TDEE API
@@ -59,6 +66,7 @@ export const tdeeApi = {
     const { data } = await api.put('/tdee/profile', profile)
     return data
   },
+  resetTarget: () => api.post('/tdee/reset-target'),
 }
 
 // Meal Plan API
@@ -75,6 +83,10 @@ export const mealPlanApi = {
     const { data } = await api.get('/meal-plans/active')
     return data
   },
+  apply: async (planId: string) => {
+    const { data } = await api.post(`/meal-plans/${planId}/apply`)
+    return data
+  }
 }
 
 // Analytics API
@@ -97,8 +109,11 @@ export const analyticsApi = {
 const AI_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000'
 
 export const aiApi = {
-  recognizeFood: async (imageData: string) => {
-    const { data } = await axios.post(`${AI_URL}/api/recognize`, { imageData })
-    return data
+  recognizeFood: async (base64Image: string) => {
+    // Chắc chắn rằng key gửi đi là 'imageData' khớp với Pydantic của Python
+    const response = await axios.post(`${AI_URL}/api/recognize`, { 
+      imageData: base64Image 
+    });
+    return response.data;
   },
 }

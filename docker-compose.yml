@@ -61,21 +61,21 @@ services:
       - snapeat-network
     command: npm run start:prod
 
-  ai-service:
-    build:
-      context: .
-      dockerfile: apps/ai-service/Dockerfile
-    container_name: snapeat-ai-service
-    environment:
-      PYTHON_ENV: production
-      BACKEND_URL: http://backend:3000
-    ports:
-      - "8000:8000"
-    depends_on:
-      - backend
-    networks:
-      - snapeat-network
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+  # ai-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/ai-service/Dockerfile
+  #   container_name: snapeat-ai-service
+  #   environment:
+  #     PYTHON_ENV: production
+  #     BACKEND_URL: http://backend:3000
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - snapeat-network
+  #   command: uvicorn main:app --host 0.0.0.0 --port 8000
 
   web:
     build:
@@ -89,7 +89,7 @@ services:
       - "80:80"
     depends_on:
       - backend
-      - ai-service
+      # - ai-service
     networks:
       - snapeat-network
 

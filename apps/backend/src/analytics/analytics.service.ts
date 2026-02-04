@@ -89,61 +89,59 @@ export class AnalyticsService {
   }
 
   async getSummary(userId: string, period: 'week' | 'month' | 'year') {
-    const daysMap = { week: 7, month: 30, year: 365 };
-    const days = daysMap[period];
+  const daysMap = { week: 7, month: 30, year: 365 };
+  const days = daysMap[period];
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
 
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+  // 1. Lấy dữ liệu Progress và Profile (để lấy Target)
+  const [progressData, userProfile] = await Promise.all([
+    this.prisma.progress.findMany({
+      where: { userId, date: { gte: startDate } },
+      orderBy: { date: 'asc' },
+    }),
+    this.prisma.userProfile.findUnique({ where: { userId } }),
+  ]);
 
-    const progressData = await this.prisma.progress.findMany({
-      where: {
-        userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-    });
+  if (progressData.length === 0) return this.getEmptyResponse(period);
 
-    if (progressData.length === 0) {
-      return {
-        period,
-        averageCalories: 0,
-        averageProtein: 0,
-        averageCarbs: 0,
-        averageFat: 0,
-        weightChange: 0,
-        adherenceRate: 0,
-        dataPoints: 0,
-      };
-    }
+  const target = userProfile?.targetCalories || 2000;
+  
+  // 2. Tính toán các chỉ số nâng cao
+  const chartData = progressData.map(day => ({
+    date: day.date.toLocaleDateString('en-US', { weekday: 'short' }),
+    consumed: day.caloriesConsumed,
+    target: target,
+    weight: day.weight,
+  }));
 
-    const totals = progressData.reduce(
-      (acc, day) => ({
-        calories: acc.calories + day.caloriesConsumed,
-        protein: acc.protein + day.proteinConsumed,
-        carbs: acc.carbs + day.carbsConsumed,
-        fat: acc.fat + day.fatConsumed,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    );
+  const totalCalories = progressData.reduce((acc, d) => acc + d.caloriesConsumed, 0);
+  const avgCalories = totalCalories / progressData.length;
+  
+  // Tính Adherence: % số ngày ăn trong khoảng +/- 10% Target
+  const adherenceDays = progressData.filter(d => 
+    d.caloriesConsumed >= target * 0.9 && d.caloriesConsumed <= target * 1.1
+  ).length;
 
-    const count = progressData.length;
-    const firstWeight = progressData[0]?.weight || 0;
-    const lastWeight = progressData[progressData.length - 1]?.weight || 0;
+  // Dự đoán: Dựa trên thâm hụt (7700 kcal thâm hụt = 1kg giảm)
+  const dailyDeficit = target - avgCalories;
+  const projectedWeightChange = (dailyDeficit * 30) / 7700; // Dự đoán cho 30 ngày tới
+  const currentWeight = progressData[progressData.length - 1].weight || userProfile?.weight || 0;
 
-    return {
-      period,
-      averageCalories: Math.round(totals.calories / count),
-      averageProtein: Math.round(totals.protein / count),
-      averageCarbs: Math.round(totals.carbs / count),
-      averageFat: Math.round(totals.fat / count),
-      weightChange: Math.round((lastWeight - firstWeight) * 10) / 10,
-      adherenceRate: Math.round((count / days) * 100),
-      dataPoints: count,
-    };
-  }
+  return {
+    period,
+    averageCalories: Math.round(avgCalories),
+    weightChange: Math.round(((progressData[progressData.length - 1].weight || 0) - (progressData[0].weight || 0)) * 10) / 10,
+    adherenceRate: Math.round((adherenceDays / progressData.length) * 100),
+    projectedWeight: Math.round((currentWeight - projectedWeightChange) * 10) / 10,
+    chartData, // Dữ liệu cho biểu đồ
+    dataPoints: progressData.length,
+  };
+}
+
+private getEmptyResponse(period: string) {
+  return { period, averageCalories: 0, weightChange: 0, adherenceRate: 0, projectedWeight: 0, chartData: [], dataPoints: 0 };
+}
 
   async getWeeklyComparison(userId: string) {
     const now = new Date();

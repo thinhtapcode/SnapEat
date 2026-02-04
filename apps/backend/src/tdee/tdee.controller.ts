@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { TdeeService } from './tdee.service';
 import { UpdateProfileDto } from './dto';
@@ -25,4 +25,9 @@ export class TdeeController {
   updateProfile(@GetUser('id') userId: string, @Body() dto: UpdateProfileDto) {
     return this.tdeeService.updateProfile(userId, dto);
   }
+  @Post('reset-target')
+  @UseGuards(JwtAuthGuard)
+  async resetTarget(@GetUser('id') userId: string) {
+  return this.tdeeService.handleResetToRecommend(userId);
+}
 }

@@ -9,12 +9,13 @@ import MealPlan from './pages/MealPlan'
 import Analytics from './pages/Analytics'
 import Profile from './pages/Profile'
 import Layout from './components/Layout'
+import Welcome from './pages/Welcome'
 
 const queryClient = new QueryClient()
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token)
-  return token ? <>{children}</> : <Navigate to="/login" />
+  return token ? <>{children}</> : <Navigate to="/welcome" />
 }
 
 function App() {
@@ -22,6 +23,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
+          {/* Welcome Page */}
+          <Route path="/welcome" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route

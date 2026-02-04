@@ -21,6 +21,8 @@ model User {
   progress  Progress[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  currentStreak Int       @default(0)
+  lastStreakAt  DateTime?
 
   @@map("users")
 }
@@ -39,6 +41,10 @@ model UserProfile {
   goal          Goal?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  targetCalories Float?    // Thêm trường này
+  targetProtein  Float?    // Thêm trường này
+  targetCarbs    Float?    // Thêm trường này
+  targetFat      Float?    // Thêm trường này
 
   @@map("user_profiles")
 }
@@ -118,4 +124,16 @@ model Progress {
   @@map("progress")
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+model FoodLibrary {
+  id          String   @id @default(uuid())
+  name        String   @unique // Tên món ăn (để tìm kiếm)
+  calories    Float
+  protein     Float
+  carbs       Float
+  fat         Float
+  servingSize String   @default("100g")
+  isVerified  Boolean  @default(false) // Món do admin xác nhận hoặc do user đóng góp
+  createdAt   DateTime @default(now())
 }

@@ -14,13 +14,14 @@ import { MealService } from './meal.service';
 import { CreateMealDto, UpdateMealDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+import { FoodLibraryService } from './food-library.service';
 
 @ApiTags('meals')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('meals')
 export class MealController {
-  constructor(private mealService: MealService) {}
+  constructor(private mealService: MealService, private foodLibraryService: FoodLibraryService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new meal' })
@@ -79,5 +80,21 @@ export class MealController {
   @ApiResponse({ status: 404, description: 'Meal not found' })
   remove(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.mealService.remove(id, userId);
+  }
+
+  @Get('daily-summary')
+  async getSummary(
+  @GetUser('id') userId: string,
+  @Query('date') date: string,
+) {
+  const dateObj = new Date(date);
+  return this.mealService.getDailySummary(userId, dateObj);
+  }
+
+  @Get('food-library/search')
+  @ApiOperation({ summary: 'Search food from library and external APIs' })
+  async searchFood(@Query('q') query: string) {
+    // Sửa từ findNutrition sang searchFood để nhận về Mảng []
+    return this.foodLibraryService.searchFood(query);
   }
 }

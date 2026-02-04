@@ -79,45 +79,46 @@ export class TdeeService {
   }
 
   async calculateForUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { profile: true },
-    });
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    include: { profile: true },
+  });
 
-    if (!user?.profile) {
-      return {
-        error: 'User profile not complete. Please update your profile with age, gender, height, weight, activity level, and goal.',
-      };
-    }
-
-    const { age, gender, height, weight, activityLevel, goal } = user.profile;
-
-    if (!age || !gender || !height || !weight || !activityLevel || !goal) {
-      return {
-        error: 'Missing required profile information',
-      };
-    }
-
-    const bmr = this.calculateBMR(weight, height, age, gender);
-    const tdee = this.calculateTDEE(bmr, activityLevel);
-    const recommendedCalories = this.calculateRecommendedCalories(tdee, goal);
-    const macros = this.calculateMacros(recommendedCalories, goal);
-
-    return {
-      bmr: Math.round(bmr),
-      tdee: Math.round(tdee),
-      recommendedCalories: Math.round(recommendedCalories),
-      macros,
-      profile: {
-        age,
-        gender,
-        height,
-        weight,
-        activityLevel,
-        goal,
-      },
-    };
+  if (!user?.profile) {
+    return { error: 'User profile not complete.' };
   }
+
+  // 1. LUÔN TÍNH TOÁN RECOMMEND (Dựa trên chiều cao, cân nặng)
+  const { age, gender, height, weight, activityLevel, goal } = user.profile;
+  if (!age || !gender || !height || !weight || !activityLevel || !goal) {
+    return { error: 'Missing required profile information' };
+  }
+
+  const bmr = this.calculateBMR(weight, height, age, gender);
+  const tdee = this.calculateTDEE(bmr, activityLevel);
+  const recommendedCalories = this.calculateRecommendedCalories(tdee, goal);
+  const recommendedMacros = this.calculateMacros(recommendedCalories, goal);
+
+  // 2. TRẢ VỀ CẢ HAI: Số Recommend và Số Target thực tế đang dùng
+  return {
+    // Dữ liệu Recommend (Cố định theo chỉ số cơ thể)
+    recommend: {
+      calories: Math.round(recommendedCalories),
+      macros: recommendedMacros,
+    },
+    // Dữ liệu thực tế đang áp dụng (Từ Template hoặc Plan)
+    // Nếu targetCalories null, UI sẽ biết để dùng số recommend
+    current: user.profile.targetCalories ? {
+      calories: Math.round(user.profile.targetCalories),
+      macros: {
+        protein: user.profile.targetProtein,
+        carbs: user.profile.targetCarbs,
+        fat: user.profile.targetFat,
+      }
+    } : null,
+    profile: user.profile
+  };
+}
 
   async updateProfile(userId: string, profileData: any) {
     const existingProfile = await this.prisma.userProfile.findUnique({
@@ -138,4 +139,15 @@ export class TdeeService {
       });
     }
   }
+  async handleResetToRecommend(userId: string) {
+  return this.prisma.userProfile.update({
+    where: { userId },
+    data: {
+      targetCalories: null,
+      targetProtein: null,
+      targetCarbs: null,
+      targetFat: null,
+    },
+  });
+}
 }

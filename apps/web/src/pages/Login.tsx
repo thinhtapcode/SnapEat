@@ -29,10 +29,11 @@ export default function Login() {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      background: '#f5f5f5'
+      background: 'url(../src/assets/images/background.svg)',
+      backgroundSize: 'cover',
     }}>
       <div className="card" style={{ width: '400px' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>SnapEat Login</h1>
+        <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>Login</h1>
         <form onSubmit={handleSubmit}>
           <div>
             <label>Email</label>

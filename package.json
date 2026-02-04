@@ -37,5 +37,9 @@
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.45.0",
     "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "react-circular-progressbar": "^2.2.0",
+    "recharts": "^3.7.0"
   }
 }

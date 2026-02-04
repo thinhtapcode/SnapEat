@@ -5,6 +5,8 @@ interface User {
   id: string
   email: string
   username: string
+  currentStreak: number; // <--- Thêm dòng này vào
+  lastStreakAt?: string | Date;
 }
 
 interface AuthState {
