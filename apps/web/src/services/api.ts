@@ -54,6 +54,14 @@ export const mealApi = {
     })
     return data
   },
+  delete: async (mealId: string) => {
+    const { data } = await api.delete(`/meals/${mealId}`)
+    return data
+  },
+  update: async (mealId: string, meal: any) => {
+    const { data } = await api.patch(`/meals/${mealId}`, meal)
+    return data
+  },
 }
 
 // TDEE API
@@ -86,24 +94,45 @@ export const mealPlanApi = {
   apply: async (planId: string) => {
     const { data } = await api.post(`/meal-plans/${planId}/apply`)
     return data
+  },
+  remove: async (planId: string) => {
+    const { data } = await api.delete(`/meal-plans/${planId}`)
+    return data
+  },
+  update: async (planId: string, plan: any) => {
+    const { data } = await api.patch(`/meal-plans/${planId}`, plan)
+    return data
   }
+  
 }
 
 // Analytics API
-export const analyticsApi = {
+export const analyticApi = {
+  /**
+   * Lấy dữ liệu tổng hợp cho Dashboard Analytics (7 ngày gần nhất)
+   * Bao gồm: Trends, Meal Distribution, Adherence Score và User Target
+   */
+  getDashboard: async () => {
+    const { data } = await api.get('/analytics/dashboard');
+    return data;
+  },
+
+  /**
+   * (Tùy chọn) Lấy dữ liệu theo số ngày tùy chỉnh nếu Thịnh muốn mở rộng sau này
+   */
   getHistory: async (days: number = 30) => {
-    const { data } = await api.get('/analytics/history', { params: { days } })
-    return data
+    const { data } = await api.get('/analytics/history', { params: { days } });
+    return data;
   },
-  getSummary: async (period: 'week' | 'month' | 'year' = 'week') => {
-    const { data } = await api.get('/analytics/summary', { params: { period } })
-    return data
-  },
+
+  /**
+   * Theo dõi tiến độ cân nặng/calo theo ngày cụ thể
+   */
   trackProgress: async (date?: string) => {
-    const { data } = await api.post('/analytics/track', null, { params: { date } })
-    return data
+    const { data } = await api.post('/analytics/track', null, { params: { date } });
+    return data;
   },
-}
+};
 
 // AI Service API
 const AI_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000'
@@ -117,3 +146,38 @@ export const aiApi = {
     return response.data;
   },
 }
+
+export const userApi = {
+  updateProfile: async (profile: any) => {
+    const { data } = await api.put('/users/profile', profile);
+    return data;
+  },
+};
+
+// Analytics API
+export const analyticsApi = {
+  /**
+   * Lấy dữ liệu tổng hợp cho Dashboard Analytics (7 ngày gần nhất)
+   * Bao gồm: Trends, Meal Distribution, Adherence Score và User Target
+   */
+  getDashboard: async () => {
+    const { data } = await api.get('/analytics/dashboard');
+    return data;
+  },
+
+  /**
+   * (Tùy chọn) Lấy dữ liệu theo số ngày tùy chỉnh nếu Thịnh muốn mở rộng sau này
+   */
+  getHistory: async (days: number = 30) => {
+    const { data } = await api.get('/analytics/history', { params: { days } });
+    return data;
+  },
+
+  /**
+   * Theo dõi tiến độ cân nặng/calo theo ngày cụ thể
+   */
+  trackProgress: async (date?: string) => {
+    const { data } = await api.post('/analytics/track', null, { params: { date } });
+    return data;
+  },
+};

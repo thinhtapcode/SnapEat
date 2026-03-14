@@ -1,89 +1,145 @@
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { analyticsApi } from '../services/api';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, AreaChart, Area, Legend 
 } from 'recharts';
+import { analyticsApi } from '../services/api';
+
+const COLORS = ['#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd'];
+
+// Style Card giữ nguyên "màu mè" của Thịnh nhưng tối ưu padding cho mobile
+const cardStyle: React.CSSProperties = {
+  backgroundColor: 'white', 
+  padding: 'clamp(16px, 4vw, 24px)', 
+  borderRadius: '24px',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+  border: '1px solid #f1f5f9',
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%',
+  minWidth: 0 // Chống tràn trong flex/grid
+};
 
 export default function Analytics() {
-  const { data: analytics, isLoading } = useQuery({
-    queryKey: ['analytics-summary'],
-    queryFn: () => analyticsApi.getSummary('week'),
+  const { data, isLoading } = useQuery({
+    queryKey: ['analytics-dashboard'],
+    queryFn: analyticsApi.getDashboard
   });
 
-  if (isLoading) return <p>Loading insight...</p>;
+  if (isLoading) return <div style={{ padding: '40px', textAlign: 'center' }}>Đang tính toán chỉ số sức khỏe...</div>;
 
   return (
-    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <h1>Progress Analytics</h1>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: 'clamp(15px, 3vw, 30px)' }}>
+      <header style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: 'clamp(20px, 5vw, 24px)', fontWeight: 800, color: '#1e293b' }}> Phân tích dinh dưỡng</h1>
+        <p style={{ color: '#64748b', fontSize: '14px' }}>Dữ liệu tổng hợp từ các bữa ăn của bạn</p>
+      </header>
 
-      {/* Row 1: Key Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-        <div className="card" style={{ borderLeft: '5px solid #4CAF50' }}>
-          <h4>Adherence</h4>
-          <h2 style={{ color: '#4CAF50' }}>{analytics?.adherenceRate}%</h2>
-        </div>
-        <div className="card" style={{ borderLeft: '5px solid #2196F3' }}>
-          <h4>Avg. Calories</h4>
-          <h2>{analytics?.averageCalories} <small>kcal</small></h2>
-        </div>
-        <div className="card" style={{ borderLeft: '5px solid #FF9800' }}>
-          <h4>Weight Diff</h4>
-          <h2 style={{ color: analytics?.weightChange <= 0 ? '#4CAF50' : '#f44336' }}>
-            {analytics?.weightChange > 0 ? '+' : ''}{analytics?.weightChange} kg
-          </h2>
-        </div>
-        <div className="card" style={{ borderLeft: '5px solid #9C27B0' }}>
-          <h4>Prediction</h4>
-          <h2>{analytics?.projectedWeight} <small>kg</small></h2>
-        </div>
-      </div>
-
-      {/* Row 2: Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {/* Biểu đồ bám sát Calo */}
-        <div className="card" style={{ height: '350px' }}>
-          <h3>Calorie Adherence (Target vs Consumed)</h3>
-          <ResponsiveContainer width="100%" height="90%">
-            <AreaChart data={analytics?.chartData}>
-              <defs>
-                <linearGradient id="colorCons" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" />
-              <YAxis hide />
-              <Tooltip />
-              <Area type="monotone" dataKey="consumed" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCons)" />
-              <Line type="monotone" dataKey="target" stroke="#ff7300" strokeDasharray="5 5" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
+      {/* Grid thông minh: Tự rớt hàng khi không đủ 350px */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', 
+        gap: '24px' 
+      }}>
+        
+        {/* Chart 1: Calorie Variance */}
+        <div style={{ ...cardStyle }}>
+          <h3 style={{ fontSize: '16px', marginBottom: '20px', fontWeight: 700 }}>Calorie Thực tế vs Mục tiêu</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data?.trends} margin={{ left: -20, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
+                <YAxis hide />
+                <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
+                <Bar dataKey="actualCal" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Thực tế (kcal)" />
+                <Bar dataKey="targetCal" fill="#e2e8f0" radius={[6, 6, 0, 0]} name="Mục tiêu (kcal)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        {/* Biểu đồ cân nặng */}
-        <div className="card" style={{ height: '350px' }}>
-          <h3>Weight Trend</h3>
-          <ResponsiveContainer width="100%" height="90%">
-            <LineChart data={analytics?.chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" />
-              <YAxis domain={['auto', 'auto']} />
-              <Tooltip />
-              <Line type="step" dataKey="weight" stroke="#2196F3" strokeWidth={3} dot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
+        {/* Chart 2: Discipline Score */}
+        <div style={{ ...cardStyle, alignItems: 'center', justifyContent: 'center' }}>
+          <h3 style={{ fontSize: '16px', marginBottom: '20px', fontWeight: 700 }}>Chỉ số kỷ luật</h3>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" strokeWidth="10" />
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#10b981" strokeWidth="10" 
+                strokeDasharray={`${(data?.adherenceScore || 0) * 3.14}, 314`} transform="rotate(-90 60 60)" strokeLinecap="round" />
+            </svg>
+            <span style={{ position: 'absolute', fontSize: '24px', fontWeight: 800, color: '#065f46' }}>{data?.adherenceScore}%</span>
+          </div>
+          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '15px', textAlign: 'center' }}>
+            Bạn đạt mục tiêu {data?.adherenceScore}% số ngày trong tuần.
+          </p>
         </div>
-      </div>
 
-      {/* Row 3: Predictions & Insights */}
-      <div className="card" style={{ background: '#f0f7ff', border: 'none' }}>
-        <h3>🤖 AI Insights & Predictions</h3>
-        <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
-          Dựa trên dữ liệu 7 ngày qua, bạn đang thâm hụt trung bình <strong>300 kcal/ngày</strong>. 
-          Nếu tiếp tục duy trì tỉ lệ bám plan <strong>{analytics?.adherenceRate}%</strong>, 
-          bạn có thể đạt mục tiêu cân nặng vào ngày <strong>15/06/2024</strong>.
-        </p>
+        {/* Chart 3: Macro Trends */}
+        <div style={{ ...cardStyle }}>
+          <h3 style={{ fontSize: '16px', marginBottom: '20px', fontWeight: 700 }}>Biến thiên dinh dưỡng (g)</h3>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data?.trends} margin={{ left: -20, right: 10 }}>
+                <defs>
+                  <linearGradient id="colorProtein" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+                <Tooltip />
+                <Legend verticalAlign="top" align="right" iconType="circle" />
+                <Area type="monotone" dataKey="protein" stroke="#3b82f6" fill="url(#colorProtein)" strokeWidth={3} name="Protein" />
+                <Area type="monotone" dataKey="carbs" stroke="#f59e0b" fill="transparent" strokeWidth={3} name="Carbs" />
+                <Area type="monotone" dataKey="fat" stroke="#ef4444" fill="transparent" strokeWidth={3} name="Fat" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Chart 4: Meal Distribution */}
+        <div style={{ ...cardStyle }}>
+            <h3 style={{ fontSize: '16px', marginBottom: '20px', fontWeight: 700 }}>Phân bổ Calo</h3>
+            <div style={{
+              display: 'flex', 
+              flexWrap: 'wrap', // Mobile rớt hàng, Laptop dàn ngang
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: '20px'
+            }}>
+                <div style={{ width: '180px', height: '180px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                          <Pie 
+                            data={data?.mealDistribution} 
+                            dataKey="calories" 
+                            nameKey="type" 
+                            cx="50%" cy="50%" 
+                            innerRadius={50} 
+                            outerRadius={70} 
+                            paddingAngle={5}
+                          >
+                              {data?.mealDistribution.map((_: any, i: number) => (
+                                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                              ))}
+                          </Pie>
+                          <Tooltip />
+                      </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ flex: '1', minWidth: '200px' }}>
+                    {data?.mealDistribution.map((d: any, i: number) => (
+                        <div key={i} style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '14px', borderBottom: '1px solid #f8fafc', paddingBottom: '5px'}}>
+                            <span><span style={{color: COLORS[i % COLORS.length], marginRight: '8px'}}>●</span>{d.type}</span>
+                            <span style={{fontWeight: 700}}>{Math.round(d.calories)} kcal</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+
       </div>
     </div>
   );

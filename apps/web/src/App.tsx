@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from './store/authStore'
+import FloatingAddButton from './components/FAB';
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -42,6 +43,7 @@ function App() {
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
+         
       </Router>
     </QueryClientProvider>
   )

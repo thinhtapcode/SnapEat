@@ -1,11 +1,24 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { CreateMealDto, UpdateMealDto } from './dto';
+import { StreakService } from '../users/streak.service';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class MealService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private streakService: StreakService, // Inject Service quản lý Streak
+  ) {}
 
+  /**
+   * Tạo bữa ăn mới và kiểm tra Streak
+   */
   async create(userId: string, dto: CreateMealDto) {
     const meal = await this.prisma.meal.create({
       data: {
@@ -13,25 +26,31 @@ export class MealService {
         name: dto.name,
         type: dto.type,
         foods: dto.foods,
-        totalCalories: dto.totalCalories,
-        totalProtein: dto.totalProtein,
-        totalCarbs: dto.totalCarbs,
-        totalFat: dto.totalFat,
+        totalCalories: Number(dto.totalCalories),
+        totalProtein: Number(dto.totalProtein),
+        totalCarbs: Number(dto.totalCarbs),
+        totalFat: Number(dto.totalFat),
         imageUrl: dto.imageUrl,
-        consumedAt: dto.consumedAt || new Date(),
+        consumedAt: dto.consumedAt ? new Date(dto.consumedAt) : new Date(),
       },
     });
+
+    // Kích hoạt kiểm tra Streak ngay khi dữ liệu thay đổi
+    await this.streakService.checkAndUpdateStreak(userId);
 
     return meal;
   }
 
+  /**
+   * Lấy danh sách bữa ăn theo khoảng thời gian
+   */
   async findAll(userId: string, startDate?: Date, endDate?: Date) {
     const where: any = { userId };
 
     if (startDate || endDate) {
       where.consumedAt = {};
-      if (startDate) where.consumedAt.gte = startDate;
-      if (endDate) where.consumedAt.lte = endDate;
+      if (startDate) where.consumedAt.gte = new Date(startDate);
+      if (endDate) where.consumedAt.lte = new Date(endDate);
     }
 
     return this.prisma.meal.findMany({
@@ -40,134 +59,101 @@ export class MealService {
     });
   }
 
+  /**
+   * Tìm chi tiết một bữa ăn
+   */
   async findOne(id: string, userId: string) {
     const meal = await this.prisma.meal.findFirst({
       where: { id, userId },
     });
 
     if (!meal) {
-      throw new NotFoundException('Meal not found');
+      throw new NotFoundException('Không tìm thấy bữa ăn này.');
     }
 
     return meal;
   }
 
+  /**
+   * Cập nhật bữa ăn và tính toán lại Streak
+   */
   async update(id: string, userId: string, dto: UpdateMealDto) {
     await this.findOne(id, userId);
 
-    return this.prisma.meal.update({
+    const updatedMeal = await this.prisma.meal.update({
       where: { id },
-      data: dto,
+      data: {
+        ...dto,
+        // Đảm bảo ép kiểu số nếu dữ liệu từ DTO gửi lên là chuỗi
+        totalCalories: dto.totalCalories ? Number(dto.totalCalories) : undefined,
+        totalProtein: dto.totalProtein ? Number(dto.totalProtein) : undefined,
+        totalCarbs: dto.totalCarbs ? Number(dto.totalCarbs) : undefined,
+        totalFat: dto.totalFat ? Number(dto.totalFat) : undefined,
+      },
     });
+
+    // Sau khi sửa món ăn, tổng calo thay đổi -> Check lại streak
+    await this.streakService.checkAndUpdateStreak(userId);
+
+    return updatedMeal;
   }
 
+  /**
+   * Xóa bữa ăn và tính toán lại Streak
+   */
   async remove(id: string, userId: string) {
     await this.findOne(id, userId);
 
-    return this.prisma.meal.delete({
+    const deletedMeal = await this.prisma.meal.delete({
       where: { id },
     });
+
+    // Sau khi xóa món ăn, có thể user từ "đủ calo" thành "thiếu calo" -> Cần check lại
+    await this.streakService.checkAndUpdateStreak(userId);
+
+    return deletedMeal;
   }
 
+  /**
+   * Lấy tóm tắt dinh dưỡng trong ngày kèm số Streak mới nhất
+   */
   async getDailySummary(userId: string, date: Date) {
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+    const vnNow = dayjs().tz('Asia/Ho_Chi_Minh');
+    const startOfDay = vnNow.startOf('day').toDate();
+    const endOfDay = vnNow.endOf('day').toDate();
 
-  const meals = await this.prisma.meal.findMany({
-    where: {
-      userId,
-      consumedAt: { gte: startOfDay, lte: endOfDay },
-    },
-  });
+    const meals = await this.prisma.meal.findMany({
+      where: {
+        userId,
+        consumedAt: { gte: startOfDay, lte: endOfDay },
+      },
+    });
 
-  const summary = meals.reduce(
-    (acc, meal) => ({
-      totalCalories: acc.totalCalories + meal.totalCalories,
-      totalProtein: acc.totalProtein + meal.totalProtein,
-      totalCarbs: acc.totalCarbs + meal.totalCarbs,
-      totalFat: acc.totalFat + meal.totalFat,
-      mealCount: acc.mealCount + 1,
-    }),
-    { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0, mealCount: 0 },
-  );
+    const summary = meals.reduce(
+      (acc, meal) => ({
+        totalCalories: acc.totalCalories + (meal.totalCalories || 0),
+        totalProtein: acc.totalProtein + (meal.totalProtein || 0),
+        totalCarbs: acc.totalCarbs + (meal.totalCarbs || 0),
+        totalFat: acc.totalFat + (meal.totalFat || 0),
+        mealCount: acc.mealCount + 1,
+      }),
+      { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0, mealCount: 0 },
+    );
 
-  // --- LOGIC MỚI: Tự động chạy Streak nếu là ngày hôm nay ---
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  // So sánh nếu 'date' truyền vào là ngày hôm nay
-  if (startOfDay.getTime() === today.getTime()) {
-    await this.checkAndUpdateStreak(userId);
-  }
+    // Lấy thông tin Streak từ User để trả về cho Frontend
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { currentStreak: true, lastStreakAt: true }
+    });
 
-  // Lấy lại thông tin user để có số streak mới nhất sau khi update
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId },
-    select: { currentStreak: true }
-  });
-
-  return {
-    date,
-    meals,
-    summary,
-    currentStreak: user?.currentStreak || 0, // Trả về streak mới nhất
-  };
-}
-  async checkAndUpdateStreak(userId: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
-  // 1. Tính tổng calo hôm nay
-  const mealsToday = await this.prisma.meal.findMany({
-    where: {
-      userId,
-      consumedAt: { gte: today, lt: tomorrow },
-    },
-  });
-
-  const totalCalories = mealsToday.reduce((sum, m) => sum + m.totalCalories, 0);
-
-  // 2. Lấy User Profile để biết Goal
-  const user = await this.prisma.user.findUnique({ 
-    where: { id: userId },
-    include: { profile: true }
-  });
-
-  if (!user || !user.profile) return;
-
-  // Lấy targetCalories từ Profile, nếu chưa có thì mặc định 2000
-  const goal = user.profile.targetCalories || 2000;
-
-  // --- LOGIC SO SÁNH CHÍNH XÁC ---
-  // Streak tăng nếu Calo tiêu thụ nằm trong khoảng 90% - 110% của Goal
-  const lowerBound = goal * 0.9;
-  const upperBound = goal * 1.1;
-  const isGoalMet = totalCalories >= lowerBound && totalCalories <= upperBound;
-
-  if (isGoalMet) {
-    const lastStreak = user.lastStreakAt ? new Date(user.lastStreakAt) : null;
-    if (lastStreak) lastStreak.setHours(0, 0, 0, 0);
-
-    if (!lastStreak || lastStreak.getTime() < today.getTime()) {
-      let newStreak = user.currentStreak + 1;
-      
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      if (lastStreak && lastStreak.getTime() < yesterday.getTime()) {
-        newStreak = 1; 
+    return {
+      date: startOfDay,
+      meals,
+      summary,
+      streak: {
+        current: user?.currentStreak || 0,
+        lastAchieved: user?.lastStreakAt
       }
-
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { currentStreak: newStreak, lastStreakAt: today }
-      });
-    }
+    };
   }
-}
-  
 }

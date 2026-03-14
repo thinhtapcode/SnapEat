@@ -79,75 +79,119 @@ export class TdeeService {
   }
 
   async calculateForUser(userId: string) {
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId },
-    include: { profile: true },
-  });
-
-  if (!user?.profile) {
-    return { error: 'User profile not complete.' };
-  }
-
-  // 1. LUÔN TÍNH TOÁN RECOMMEND (Dựa trên chiều cao, cân nặng)
-  const { age, gender, height, weight, activityLevel, goal } = user.profile;
-  if (!age || !gender || !height || !weight || !activityLevel || !goal) {
-    return { error: 'Missing required profile information' };
-  }
-
-  const bmr = this.calculateBMR(weight, height, age, gender);
-  const tdee = this.calculateTDEE(bmr, activityLevel);
-  const recommendedCalories = this.calculateRecommendedCalories(tdee, goal);
-  const recommendedMacros = this.calculateMacros(recommendedCalories, goal);
-
-  // 2. TRẢ VỀ CẢ HAI: Số Recommend và Số Target thực tế đang dùng
-  return {
-    // Dữ liệu Recommend (Cố định theo chỉ số cơ thể)
-    recommend: {
-      calories: Math.round(recommendedCalories),
-      macros: recommendedMacros,
-    },
-    // Dữ liệu thực tế đang áp dụng (Từ Template hoặc Plan)
-    // Nếu targetCalories null, UI sẽ biết để dùng số recommend
-    current: user.profile.targetCalories ? {
-      calories: Math.round(user.profile.targetCalories),
-      macros: {
-        protein: user.profile.targetProtein,
-        carbs: user.profile.targetCarbs,
-        fat: user.profile.targetFat,
-      }
-    } : null,
-    profile: user.profile
-  };
-}
-
-  async updateProfile(userId: string, profileData: any) {
-    const existingProfile = await this.prisma.userProfile.findUnique({
+    const userProfile = await this.prisma.userProfile.findUnique({
       where: { userId },
     });
 
-    if (existingProfile) {
+    if (!userProfile) {
+      return { error: 'User profile not found.' };
+    }
+
+    const { age, gender, height, weight, activityLevel, goal } = userProfile;
+
+    // Kiểm tra thông tin cơ bản để tính recommend
+    if (!age || !gender || !height || !weight || !activityLevel || !goal) {
+      return { 
+        profile: userProfile,
+        error: 'Thông tin sinh học chưa đầy đủ để tính toán khuyến nghị.' 
+      };
+    }
+
+    // 1. Tính toán số khuyến nghị (Recommended) theo công thức khoa học
+    const bmr = this.calculateBMR(weight, height, age, gender);
+    const tdeeValue = this.calculateTDEE(bmr, activityLevel);
+    const recommendedCalories = this.calculateRecommendedCalories(tdeeValue, goal);
+    const recommendedMacros = this.calculateMacros(recommendedCalories, goal);
+
+    // 2. Trả về cấu trúc mà Frontend đang mong đợi
+    return {
+      profile: userProfile,
+      recommend: {
+        bmr: Math.round(bmr),
+        calories: Math.round(recommendedCalories),
+        macros: recommendedMacros,
+      },
+      // Nếu user đã được áp dụng một Meal Plan (có targetCalories), trả về current
+      current: userProfile.targetCalories ? {
+        calories: Math.round(userProfile.targetCalories),
+        macros: {
+          protein: userProfile.targetProtein,
+          carbs: userProfile.targetCarbs,
+          fat: userProfile.targetFat,
+        }
+      } : null
+    };
+  }
+
+  // Hàm Reset mục tiêu (đã có trong controller của bạn)
+  async handleResetToRecommend(userId: string) {
+    const userProfile = await this.prisma.userProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!userProfile) {
+      throw new Error('Không tìm thấy Profile người dùng.');
+    }
+
+    // 2. Kiểm tra xem có đủ thông số để tính không
+    const { age, gender, height, weight, activityLevel, goal } = userProfile;
+    if (!age || !gender || !height || !weight || !activityLevel || !goal) {
+       // Nếu thiếu thông số, lúc này mới nên để null vì không tính được
+       return this.prisma.userProfile.update({
+        where: { userId },
+        data: { targetCalories: null, targetProtein: null, targetCarbs: null, targetFat: null },
+      });
+    }
+
+    // 3. Tính toán con số khuyến nghị "chuẩn" của hệ thống
+    const bmr = this.calculateBMR(weight, height, age, gender);
+    const tdeeValue = this.calculateTDEE(bmr, activityLevel);
+    const calories = Math.round(this.calculateRecommendedCalories(tdeeValue, goal));
+    const macros = this.calculateMacros(calories, goal);
+
+    // 4. Cập nhật vào DB (Chốt số để Streak chạy)
+    return this.prisma.userProfile.update({
+      where: { userId },
+      data: {
+        targetCalories: calories,
+        targetProtein: macros.protein,
+        targetCarbs: macros.carbs,
+        targetFat: macros.fat,
+      },
+    });
+  }
+
+
+  async updateProfile(userId: string, profileData: any) {
+    // 1. Cập nhật các thông tin cơ bản trước (Tuổi, Cao, Nặng...)
+    const updatedProfile = await this.prisma.userProfile.upsert({
+      where: { userId },
+      update: profileData,
+      create: { userId, ...profileData },
+    });
+
+    // 2. TỰ ĐỘNG CẬP NHẬT MỤC TIÊU (Nếu đủ thông số)
+    // Việc này giúp StreakService luôn có "targetCalories" để so sánh
+    const { age, gender, height, weight, activityLevel, goal } = updatedProfile;
+    
+    if (age && gender && height && weight && activityLevel && goal) {
+      const bmr = this.calculateBMR(weight, height, age, gender);
+      const tdeeValue = this.calculateTDEE(bmr, activityLevel);
+      const calories = Math.round(this.calculateRecommendedCalories(tdeeValue, goal));
+      const macros = this.calculateMacros(calories, goal);
+
       return this.prisma.userProfile.update({
         where: { userId },
-        data: profileData,
-      });
-    } else {
-      return this.prisma.userProfile.create({
         data: {
-          userId,
-          ...profileData,
+          targetCalories: calories,
+          targetProtein: macros.protein,
+          targetCarbs: macros.carbs,
+          targetFat: macros.fat,
         },
       });
     }
+
+    return updatedProfile;
   }
-  async handleResetToRecommend(userId: string) {
-  return this.prisma.userProfile.update({
-    where: { userId },
-    data: {
-      targetCalories: null,
-      targetProtein: null,
-      targetCarbs: null,
-      targetFat: null,
-    },
-  });
-}
+  
 }

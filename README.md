@@ -115,6 +115,8 @@ JWT_EXPIRES_IN="7d"
 PORT=3000
 AI_SERVICE_URL="http://localhost:8000"
 ```
+#### AI Service (.env)
+GEMINI_API_KEY=your-key-here
 
 #### Web App (.env)
 ```env

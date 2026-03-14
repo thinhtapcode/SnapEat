@@ -3,9 +3,11 @@ import { MealController } from './meal.controller';
 import { MealService } from './meal.service';
 import { PrismaService } from '../common/prisma.service';
 import { FoodLibraryService } from './food-library.service';
+import { UserModule } from 'src/users/user.module';
 
 
 @Module({
+  imports: [UserModule],
   controllers: [MealController],
   providers: [MealService, FoodLibraryService, PrismaService], // Thêm vào đây
   exports: [FoodLibraryService], // Export nếu muốn dùng ở module khác
