@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+//import { MongooseModule } from '@nestjs/mongoose';
 import { EventEmitterModule } from '@nestjs/event-emitter'; // 1. Import thêm cái này
 import {ScheduleModule} from '@nestjs/schedule';
 
@@ -11,7 +11,7 @@ import { TdeeModule } from './tdee/tdee.module';
 import { MealPlanModule } from './meal-plan/meal-plan.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PrismaService } from './common/prisma.service';
-import { RedisService } from './common/redis.service';
+//import { RedisService } from './common/redis.service';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { RedisService } from './common/redis.service';
       wildcard: false, // Không dùng ký tự đại diện cho tên event
       delimiter: '.',  // Phân cách tên event bằng dấu chấm, vd: user.profile.updated
     }),
-    MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/snapeat_logs'),
+    // MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/snapeat_logs'),
     ScheduleModule.forRoot(),
     AuthModule,
     UserModule, // Đưa UserModule vào đây
@@ -32,8 +32,12 @@ import { RedisService } from './common/redis.service';
     MealPlanModule,
     AnalyticsModule,
   ],
-  providers: [PrismaService, RedisService],
+  providers: [PrismaService, 
+    //RedisService
+   ],
   // Export PrismaService ở đây là đúng, giúp các Module khác dùng chung 1 instance
-  exports: [PrismaService, RedisService],
+  exports: [PrismaService, 
+    //RedisService
+  ],
 })
 export class AppModule {}
