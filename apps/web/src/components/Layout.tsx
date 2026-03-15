@@ -144,6 +144,31 @@ export default function Layout() {
           .desktop-nav { display: none !important; }
           .mobile-bottom-nav { display: flex !important; }
         }
+        /* Mặc định cho Desktop */
+        .desktop-fab-wrapper {
+          display: block; /* Hiện FAB ở Desktop */
+        }
+
+        @media (max-width: 850px) {
+          .desktop-nav { 
+            display: none !important; 
+          }
+          
+          /* 1. ẨN nút FAB của desktop khi sang mobile */
+          .desktop-fab-wrapper { 
+            display: none !important; 
+          }
+
+          /* 2. HIỆN thanh bar mobile */
+          .mobile-bottom-nav { 
+            display: flex !important; 
+          }
+
+          /* 3. Đảm bảo main không bị thanh bar che mất nội dung cuối */
+          main {
+            padding-bottom: 100px !important;
+          }
+        }
       `}</style>
     </div>
   )
