@@ -162,7 +162,7 @@ const onFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const formDataToSend = new FormData();
     formDataToSend.append('file', file);
 
-    const response = await fetch('http://localhost:8000/api/scan-food', {
+    const response = await fetch(`${process.env.VITE_API_URL}/api/scan-food`, {
       method: 'POST',
       body: formDataToSend,
     });
@@ -210,7 +210,7 @@ const handleCapture = async (base64Image: string) => {
     const formDataToSend = new FormData();
     formDataToSend.append('file', file);
 
-    const response = await fetch('http://localhost:8000/api/scan-food', {
+    const response = await fetch(`${process.env.VITE_API_URL}/api/scan-food`, {
       method: 'POST',
       body: formDataToSend,
     });
@@ -468,7 +468,7 @@ const manualButtonStyle: React.CSSProperties = {
         hidden 
         onChange={onFileUpload} 
         accept="image/*"          // Chấp nhận mọi định dạng: .jpg, .png, .heic, .webp...
-        capture="environment"    // Ép mở Camera sau trên điện thoại (Mobile)
+       // capture="environment"    // Ép mở Camera sau trên điện thoại (Mobile)
       />
 
       {/* SECTION 2: AI ANALYZING VIEW */}
@@ -581,7 +581,7 @@ const manualButtonStyle: React.CSSProperties = {
             </div>
 
             <button type="submit" className="primary" style={{ width: '100%', padding: '15px', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', backgroundColor: '#4CAF50', border: 'none', color: 'white', cursor: 'pointer' }}>
-              {editingMealId ? "Cập nhật bữa ăn ✨" : "Ghi nhận bữa ăn ngay 🚀"}
+              {editingMealId ? "Cập nhật bữa ăn ✨" : "Ghi nhận bữa ăn ngay"}
             </button>
             {editingMealId && (
             <button 

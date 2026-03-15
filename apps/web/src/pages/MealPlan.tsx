@@ -353,7 +353,7 @@ return (
             </div>
 
             <button type="submit" className="primary" style={{ width: '100%', padding: '15px', borderRadius: '12px', fontSize: '1rem' }}>
-              🚀 Khởi tạo kế hoạch ngay
+              Tạo kế hoạch mới
             </button>
           </form>
         </div>

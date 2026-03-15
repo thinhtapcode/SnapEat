@@ -45,7 +45,7 @@ const toggleFab = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailySummary'] });
       handleCloseModal();
-      alert('Ghi nhận bữa ăn thành công! 🚀');
+      alert('Ghi nhận bữa ăn thành công!');
     },
   });
 
@@ -65,7 +65,7 @@ const toggleFab = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('file', file);
 
-      const response = await fetch('http://localhost:8000/api/scan-food', {
+      const response = await fetch(`${process.env.VITE_API_URL}/api/scan-food`, {
         method: 'POST',
         body: formDataToSend,
       });
@@ -142,7 +142,7 @@ const toggleFab = () => {
     formDataToSend.append('file', file);
 
     try {
-        const response = await fetch('http://localhost:8000/api/scan-food', {
+        const response = await fetch(`${process.env.VITE_API_URL}/api/scan-food`, {
         method: 'POST',
         body: formDataToSend,
         });
@@ -285,7 +285,7 @@ const fabLabelSubStyle: React.CSSProperties = {
             hidden 
             onChange={onFileUpload} 
             accept="image/*" 
-            capture="environment" 
+            //capture="environment" 
         />
         
         {isOpen && (
