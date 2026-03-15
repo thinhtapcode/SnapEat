@@ -9,3 +9,4 @@ numpy==1.26.2
 google-generativeai
 python-dotenv
 google-genai
+pillow-heif
