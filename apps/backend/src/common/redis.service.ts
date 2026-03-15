@@ -8,6 +8,10 @@ export class RedisService implements OnModuleDestroy {
   constructor() {
     this.client = createClient({
       url: process.env.REDIS_URL || 'redis://localhost:6379',
+      socket: {
+        tls: true,
+        rejectUnauthorized: false
+      }
     });
 
     this.client.on('error', (err) => console.log('Redis Client Error', err));
