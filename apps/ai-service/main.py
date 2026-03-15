@@ -1,7 +1,7 @@
 import io
 import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from google import genai
+import google.genai as genai
 from google.genai import types
 from PIL import Image
 import pillow_heif
