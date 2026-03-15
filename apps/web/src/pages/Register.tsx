@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../store/authStore'
 import { Mail, Lock, User, ArrowRight, UserPlus } from 'lucide-react' 
-import logo from '../assets/images/logo.svg' 
+import logo from '../assets/images/logo.svg'
+import backgroundPic from '../assets/images/background.svg' 
 
 export default function Register() {
   const [email, setEmail] = useState('')
@@ -117,7 +118,7 @@ export default function Register() {
           display: flex;
           justify-content: center;
           align-items: center;
-          background: url(../src/assets/images/background.svg) no-repeat 50% 20%;
+          background: url(${backgroundPic}) no-repeat 50% 20%;
           background-size: cover;
           padding: 16px;
           box-sizing: border-box;

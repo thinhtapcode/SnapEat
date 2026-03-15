@@ -14,6 +14,9 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/vi';
+import avatarSvg from '../assets/images/avatar.svg';
+import streak1Svg from '../assets/images/streak1.svg';
+import streak2Svg from '../assets/images/streak2.svg';
 
 // Kích hoạt plugin dayjs
 dayjs.extend(utc);
@@ -191,7 +194,8 @@ export default function Dashboard() {
 
   {/* Dòng 2: Avatar & Chào hỏi */}
   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%' }}>
-    <img src="../src/assets/images/avatar.svg" alt="Avatar" 
+    <img src={avatarSvg} 
+        alt="Avatar"
          style={{ width: "55px", height: "55px", borderRadius: "50%", border: '2px solid rgba(255,255,255,0.3)' }} />
     <h1 style={{ margin: "0", fontSize: "1.6rem", fontWeight: '800', color: '#0f172a', flex: 1 }}>
       {getGreeting()}, {authUser?.username}!
@@ -221,7 +225,7 @@ export default function Dashboard() {
     padding: "10px 20px", borderRadius: "18px",
     width: "fit-content"
   }}>
-    <img src={isWithinStreakZone ? "../src/assets/images/streak1.svg" : "../src/assets/images/streak2.svg"} alt="Streak" style={{ width: "30px" }} />
+    <img src={isWithinStreakZone ? streak1Svg : streak2Svg} alt="Streak" style={{ width: "30px" }} />
     <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
       <span style={{ fontWeight: "800", fontSize: "1.4rem", color: isWithinStreakZone ? "#d97706" : "#fff" }}>
         {dailySummary?.streak?.current || 0}

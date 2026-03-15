@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Menu, X } from "lucide-react"; // Cần cài lucide-react để làm menu mobile
+import logoText from '../assets/images/logo_text.svg'; // Logo dạng text cho navbar
+import welcomeBg from '../assets/images/welcome_bg.svg'; // Background chính cho trang Welcome
 
 export default function Welcome() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -10,7 +12,7 @@ export default function Welcome() {
       {/* 1. NAVBAR (Responsive) */}
       <nav className={`navbar ${isMenuOpen ? 'mobile-open' : ''}`}>
         <a href="#home" className="logo-container">
-          <img src="../src/assets/images/logo_text.svg" alt="Logo" className="logo-img" />
+          <img src={logoText} alt="Logo" className="logo-img" />
         </a>
 
         {/* Hamburger Menu cho Mobile */}
@@ -30,7 +32,7 @@ export default function Welcome() {
       </nav>
 
       {/* 2. BACKGROUND (Lớp nền cố định hoặc theo scroll) */}
-      <div className="main-bg-layer"></div>
+      <div className="main-bg-layer" style={{ backgroundImage: `url(${welcomeBg})` }}></div>
 
       {/* 3. NỘI DUNG CÁC SECTION */}
       <div className="content-layer">

@@ -4,6 +4,7 @@ import { authApi } from '../services/api'
 import { useAuthStore } from '../store/authStore'
 import { Mail, Lock, ArrowRight } from 'lucide-react' 
 import logo from '../assets/images/logo.svg' 
+import backgroundPic from '../assets/images/background.svg'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -104,7 +105,7 @@ export default function Login() {
           display: flex;
           justify-content: center;
           align-items: center;
-          background: url(../src/assets/images/background.svg) no-repeat 50% 20%;
+          background: url(${backgroundPic}) no-repeat 50% 20%;
           background-size: cover;
           padding: 16px;
           box-sizing: border-box;
