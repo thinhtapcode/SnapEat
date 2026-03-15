@@ -245,7 +245,7 @@ export default function Dashboard() {
           position: 'relative'
         }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', color: '#666', marginBottom: '20px' }}>
-            <Flame size={20} color={isWithinStreakZone ? '#4CAF50' : '#FF9800'} />
+            <Flame size={20} color={isWithinStreakZone ? '#4CAF50' : '#d65bff'} />
             <h3 style={{ fontSize: '1.1rem', color: '#333', margin: 0 }}>Năng lượng</h3>
           </div>
           
@@ -254,8 +254,8 @@ export default function Dashboard() {
               value={calculatePercentage(currentCal, targetCal)}
               text={`${Math.round(calculatePercentage(currentCal, targetCal))}%`}
               styles={buildStyles({ 
-                pathColor: isOverLimit ? '#f44336' : isWithinStreakZone ? '#4CAF50' : '#FF9800', 
-                textColor: isOverLimit ? '#f44336' : isWithinStreakZone ? '#4CAF50' : '#FF9800',
+                pathColor: isOverLimit ? '#f44336' : isWithinStreakZone ? '#4CAF50' : '#d65bff', 
+                textColor: isOverLimit ? '#f44336' : isWithinStreakZone ? '#4CAF50' : '#d65bff',
                 trailColor: '#f0f0f0',
                 textSize: '1.8rem'
               })}
