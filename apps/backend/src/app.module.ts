@@ -11,7 +11,7 @@ import { TdeeModule } from './tdee/tdee.module';
 import { MealPlanModule } from './meal-plan/meal-plan.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PrismaService } from './common/prisma.service';
-//import { RedisService } from './common/redis.service';
+import { RedisService } from './common/redis.service';
 
 @Module({
   imports: [
@@ -33,11 +33,11 @@ import { PrismaService } from './common/prisma.service';
     AnalyticsModule,
   ],
   providers: [PrismaService, 
-    //RedisService
+    RedisService
    ],
   // Export PrismaService ở đây là đúng, giúp các Module khác dùng chung 1 instance
   exports: [PrismaService, 
-    //RedisService
+    RedisService
   ],
 })
 export class AppModule {}
