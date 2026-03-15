@@ -20,6 +20,7 @@ export default function FloatingAddButton() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [showAISubMenu, setShowAISubMenu] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 // Hàm reset khi đóng FAB
 const toggleFab = () => {
@@ -65,7 +66,7 @@ const toggleFab = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('file', file);
 
-      const response = await fetch(`${process.env.VITE_API_URL}/api/scan-food`, {
+      const response = await fetch(`${API_URL}/api/scan-food`, {
         method: 'POST',
         body: formDataToSend,
       });
@@ -142,7 +143,7 @@ const toggleFab = () => {
     formDataToSend.append('file', file);
 
     try {
-        const response = await fetch(`${process.env.VITE_API_URL}/api/scan-food`, {
+        const response = await fetch(`${API_URL}/api/scan-food`, {
         method: 'POST',
         body: formDataToSend,
         });
