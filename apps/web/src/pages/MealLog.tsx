@@ -18,7 +18,7 @@ interface FoodItem {
 }
 
 export default function MealLog() {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  const AI_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000'
   const [suggestions, setSuggestions] = useState<FoodItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
@@ -163,7 +163,7 @@ const onFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const formDataToSend = new FormData();
     formDataToSend.append('file', file);
 
-    const response = await fetch(`${API_URL}/api/scan-food`, {
+    const response = await fetch(`${AI_URL}/api/scan-food`, {
       method: 'POST',
       body: formDataToSend,
     });
@@ -211,7 +211,7 @@ const handleCapture = async (base64Image: string) => {
     const formDataToSend = new FormData();
     formDataToSend.append('file', file);
 
-    const response = await fetch(`${API_URL}/api/scan-food`, {
+    const response = await fetch(`${AI_URL}/api/scan-food`, {
       method: 'POST',
       body: formDataToSend,
     });
