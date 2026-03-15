@@ -27,7 +27,7 @@ if not API_KEY:
 client = genai.Client(api_key=API_KEY)
 
 
-@app.post("/api/scan-food")
+@app.post("/scan-food")
 async def scan_food(file: UploadFile = File(...)):
     try:
         # Đọc dữ liệu ảnh giống cách AI Studio xử lý
