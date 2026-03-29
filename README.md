@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./graphics/logo.png" alt="SnapEat Logo" width="200" onerror="this.style.display='none'"/>
+  <img src="./graphics/SnapEat.svg" alt="SnapEat Logo" width="200" onerror="this.style.display='none'"/>
 
   # 🥗 SnapEat: AI-Powered Nutrition Intelligence
 
