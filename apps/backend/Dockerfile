@@ -1,51 +1,38 @@
-# Backend Dockerfile
-FROM node:18-alpine AS builder
+# Stage 1: Build
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
-COPY apps/backend/package.json ./apps/backend/
-COPY packages/shared/package.json ./packages/shared/
+COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy application source
 COPY . .
 
-# Generate Prisma client - Sửa đường dẫn build tại đây
-WORKDIR /app/apps/backend
+# Generate Prisma Client before build
 RUN npx prisma generate
 
-# Build the application
+# Build the NestJS application
+RUN npm run build
+
+# Stage 2: Production
+FROM node:20-alpine
+
 WORKDIR /app
-RUN npm run build --workspace=apps/backend
 
-# Production stage
-FROM node:18-alpine3.17
+ENV NODE_ENV=production
 
-WORKDIR /app
-RUN apk add --no-cache openssl
-# Copy package files
-COPY package.json ./
-COPY apps/backend/package.json ./apps/backend/
-
-# Chỉ cài production dependencies
-RUN npm install --production
-
-# --- ĐOẠN SỬA QUAN TRỌNG NHẤT ---
-# Copy dist bình thường
-COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
-
-# Sửa lại đường dẫn copy Prisma từ thư mục gốc của builder
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-# -------------------------------
-
-COPY apps/backend/prisma ./apps/backend/prisma
-
-WORKDIR /app/apps/backend
+# Copy necessary files from builder stage
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
 
+# Start the application
 CMD ["npm", "run", "start:prod"]

@@ -34,23 +34,25 @@ export class StreakCron {
         },
       });
 
+      // Lấy ngày hôm qua dưới dạng YYYY-MM-DD (Ví dụ: 2026-03-21)
+      const yesterdayStr = dayjs().tz(this.TZ_VN).subtract(1, 'day').format('YYYY-MM-DD');
+
       for (const user of activeStreakUsers) {
-        // Nếu hôm qua (yesterday) không có bản ghi lastStreakAt, 
-        // nghĩa là hôm qua họ đã không đạt mục tiêu -> Reset về 0
-        const lastStreakAtVN = user.lastStreakAt 
-          ? dayjs(user.lastStreakAt).tz(this.TZ_VN) 
-          : null;
+        if (!user.lastStreakAt) {
+          // Không có ngày streak mà dám có currentStreak > 0 -> Reset luôn!
+          await this.resetStreak(user.id);
+          continue;
+        }
 
-        const isMaintainedYesterday = lastStreakAtVN && 
-          lastStreakAtVN.isAfter(yesterdayStart) && 
-          lastStreakAtVN.isBefore(yesterdayEnd);
+        // Chuyển ngày streak của User về YYYY-MM-DD (Ví dụ: 2026-03-14)
+        const lastStreakStr = dayjs(user.lastStreakAt).tz(this.TZ_VN).format('YYYY-MM-DD');
 
-        if (!isMaintainedYesterday) {
-          await this.prisma.user.update({
-            where: { id: user.id },
-            data: { currentStreak: 0 },
-          });
-          this.logger.log(`💔 User ${user.id} đã đứt chuỗi Streak.`);
+        // 🔥 SO SÁNH: Nếu ngày streak cuối cùng bé hơn hẳn ngày hôm qua -> Đứt chuỗi!
+        const isBroken = dayjs(lastStreakStr).isBefore(dayjs(yesterdayStr), 'day'); // So sánh theo đơn vị 'day'
+
+        if (isBroken) {
+          await this.resetStreak(user.id);
+          this.logger.log(`💔 User ${user.id} đứt chuỗi. (Streak cuối: ${lastStreakStr}, Hôm qua là: ${yesterdayStr})`);
         }
       }
 
@@ -60,4 +62,10 @@ export class StreakCron {
       this.logger.error('❌ Lỗi khi chạy Cron Streak:', errorMsg);
     }
   }
+  async resetStreak(userId: string) {
+  await this.prisma.user.update({
+    where: { id: userId },
+    data: { currentStreak: 0 },
+  });
+}
 }

@@ -27,7 +27,12 @@ const toggleFab = () => {
   setIsOpen(!isOpen);
   setShowAISubMenu(false); // Reset menu con khi đóng/mở lại
 };
-  
+  const MEAL_TYPES = [
+    { value: 'BREAKFAST', label: '🍳 Sáng' },
+    { value: 'LUNCH', label: '🍲 Trưa' },
+    { value: 'DINNER', label: '🌆 Tối' },
+    { value: 'SNACK', label: '🍎 Nhẹ' },
+  ];
   const [formData, setFormData] = useState({
     name: '',
     type: 'LUNCH',
@@ -229,6 +234,36 @@ const fabLabelSubStyle: React.CSSProperties = {
             )}
 
             <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+              {/* 🔥 MỚI THÊM: CHỌN MEAL TYPE GỌN GÀNG */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                Thời điểm ăn
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {MEAL_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button" // 👈 Quan trọng: Không cho nó trigger submit form
+                    onClick={() => setFormData({ ...formData, type: type.value })}
+                    style={{
+                      flex: 1,
+                      padding: '12px 8px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      backgroundColor: formData.type === type.value ? '#4CAF50' : '#f3f4f6',
+                      color: formData.type === type.value ? 'white' : '#4b5563',
+                      boxShadow: formData.type === type.value ? '0 4px 12px rgba(76, 175, 80, 0.3)' : 'none',
+                    }}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
               {/* Name Input with Suggestions */}
               <div style={{ position: 'relative', marginBottom: '15px' }}>
                 <label style={labelStyle}>Tên món ăn</label>

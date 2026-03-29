@@ -1,11 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tdeeApi, userApi } from '../services/api'
+import { useAuthStore } from '../store/authStore';
+import { LogOut } from 'lucide-react'
+import { notify } from '../utils/notifier';
 
 export default function Profile() {
+  const { user, logout, updateUser } = useAuthStore();
   const queryClient = useQueryClient()
   const [isEditing, setIsEditing] = useState(false)
-  
+
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', age: '', gender: 'male',
     height: '', weight: '', activityLevel: 'MODERATELY_ACTIVE', goal: 'MAINTAIN_WEIGHT',
@@ -67,12 +71,23 @@ export default function Profile() {
 
   const updateProfile = useMutation({
     mutationFn: userApi.updateProfile,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tdee'] })
-      setIsEditing(false)
-      alert('Cập nhật hồ sơ thành công! ✨')
+    onSuccess: (response) => {
+      // 1. Làm mới dữ liệu TDEE trong cache
+      queryClient.invalidateQueries({ queryKey: ['tdee'] });
+
+      // 2. 🔥 CẬP NHẬT STORE: Đẩy dữ liệu mới vào authStore để Dashboard thấy
+      // Lưu ý: Tùy vào API của Thịnh trả về, thường là response.data hoặc chính response
+      if (response) {
+        updateUser(response.data);
+      }
+
+      setIsEditing(false);
+      notify.success('Cập nhật hồ sơ thành công!');
     },
-  })
+    onError: (error: any) => {
+      notify.error(`Lỗi: ${error.response?.data?.message || 'Không thể cập nhật'}`);
+    }
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,51 +101,95 @@ export default function Profile() {
 
   const formatEnum = (text: string) => text ? text.replace(/_/g, ' ').toLowerCase() : '---'
   // 1. Định nghĩa từ điển tiếng Việt cho các Enum
-const activityMap: Record<string, string> = {
-  SEDENTARY: 'Ít vận động (Văn phòng)',
-  LIGHTLY_ACTIVE: 'Vận động nhẹ (1-2 buổi/tuần)',
-  MODERATELY_ACTIVE: 'Vận động vừa (3-5 buổi/tuần)',
-  VERY_ACTIVE: 'Vận động nhiều (6-7 buổi/tuần)',
-  EXTRA_ACTIVE: 'Vận động cực độ (VĐV)',
-};
+  const activityMap: Record<string, string> = {
+    SEDENTARY: 'Ít vận động (Văn phòng)',
+    LIGHTLY_ACTIVE: 'Vận động nhẹ (1-2 buổi/tuần)',
+    MODERATELY_ACTIVE: 'Vận động vừa (3-5 buổi/tuần)',
+    VERY_ACTIVE: 'Vận động nhiều (6-7 buổi/tuần)',
+    EXTRA_ACTIVE: 'Vận động cực độ (VĐV)',
+  };
 
-const goalMap: Record<string, string> = {
-  LOSE_WEIGHT: 'Giảm cân (Cutting)',
-  MAINTAIN_WEIGHT: 'Duy trì cân nặng',
-  GAIN_WEIGHT: 'Tăng cân (Bulking)',
-  BUILD_MUSCLE: 'Tăng cơ tập trung',
-};
+  const goalMap: Record<string, string> = {
+    LOSE_WEIGHT: 'Giảm cân (Cutting)',
+    MAINTAIN_WEIGHT: 'Duy trì cân nặng',
+    GAIN_WEIGHT: 'Tăng cân (Bulking)',
+    BUILD_MUSCLE: 'Tăng cơ tập trung',
+  };
   if (isLoading) return <div style={{ textAlign: 'center', padding: '50px' }}>Đang tải...</div>
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '15px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+      <header style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '25px',
+        position: 'relative' // 👈 Neo giữ vị trí
+      }}>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>Hồ sơ sức khỏe</h1>
-        {!isEditing && (
-          <button onClick={() => setIsEditing(true)} style={{ 
-            padding: '10px 24px', borderRadius: '12px', border: 'none', 
-            background: '#13502b', color: 'white', fontWeight: 'bold', cursor: 'pointer' 
-          }}>
-            Chỉnh sửa
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {!isEditing && (
+            <button onClick={() => setIsEditing(true)} style={{
+              padding: '10px 24px', borderRadius: '12px', border: 'none',
+              background: '#13502b', color: 'white', fontWeight: 'bold', cursor: 'pointer',
+              fontSize: '0.9rem'
+            }}>
+              Chỉnh sửa
+            </button>
+          )}
+
+          {/* 🔓 NÚT LOGOUT TINH TẾ GỌN ĐẸP (Sử dụng chung cho cả Desktop & Mobile) */}
+          <button
+            onClick={() => {
+              if (window.confirm('Bạn có chắc chắn muốn đăng xuất không?')) {
+                logout(); // 👈 Gọi hàm logout từ authStore của bạn
+                notify.success('Đăng xuất thành công!');
+              }
+            }}
+            style={{
+              background: 'transparent',
+              color: '#ff4d4f', // Màu đỏ nhẹ tinh tế
+              border: '1px solid #ffccc7',
+              borderRadius: '10px',
+              padding: '10px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              backgroundColor: '#fff1f0'
+            }}
+            title="Đăng xuất"
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#ff4d4f';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#fff1f0';
+              e.currentTarget.style.color = '#ff4d4f';
+            }}
+          >
+            <LogOut size={18} />
           </button>
-        )}
+        </div>
       </header>
 
       <div className="profile-grid">
         {/* CỘT TRÁI: NHẬP LIỆU */}
-        <div className="card" style={{ 
-          boxShadow: '0 10px 30px rgba(0,0,0,0.05)', borderRadius: '24px', 
-          padding: '24px', backgroundColor: '#fff', border: '1px solid #f1f5f9' 
+        <div className="card" style={{
+          boxShadow: '0 10px 30px rgba(0,0,0,0.05)', borderRadius: '24px',
+          padding: '24px', backgroundColor: '#fff', border: '1px solid #f1f5f9'
         }}>
           <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.1rem', color: '#334155' }}>Thông tin cá nhân</h3>
-          
+
           {isEditing ? (
             <form onSubmit={handleSubmit}>
               <div className="input-form-grid">
-                <InputGroup label="Họ" value={formData.firstName} onChange={(v: any) => setFormData({...formData, firstName: v})} />
-                <InputGroup label="Tên" value={formData.lastName} onChange={(v: any) => setFormData({...formData, lastName: v})} />
-                <InputGroup label="Tuổi" type="number" value={formData.age} onChange={(v: any) => setFormData({...formData, age: v})} required />
-                
+                <InputGroup label="Họ" value={formData.firstName} onChange={(v: any) => setFormData({ ...formData, firstName: v })} />
+                <InputGroup label="Tên" value={formData.lastName} onChange={(v: any) => setFormData({ ...formData, lastName: v })} />
+                <InputGroup label="Tuổi" type="number" value={formData.age} onChange={(v: any) => setFormData({ ...formData, age: v })} required />
+
                 <div className="custom-input-group">
                   <label>Giới tính</label>
                   <select value={formData.gender} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, gender: e.target.value })}>
@@ -138,9 +197,9 @@ const goalMap: Record<string, string> = {
                   </select>
                 </div>
 
-                <InputGroup label="Chiều cao (cm)" type="number" value={formData.height} onChange={(v: any) => setFormData({...formData, height: v})} required />
-                <InputGroup label="Cân nặng (kg)" type="number" value={formData.weight} onChange={(v: any) => setFormData({...formData, weight: v})} required />
-                
+                <InputGroup label="Chiều cao (cm)" type="number" value={formData.height} onChange={(v: any) => setFormData({ ...formData, height: v })} required />
+                <InputGroup label="Cân nặng (kg)" type="number" value={formData.weight} onChange={(v: any) => setFormData({ ...formData, weight: v })} required />
+
                 <div className="custom-input-group full-width">
                   <label>Mức độ hoạt động</label>
                   <select value={formData.activityLevel} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, activityLevel: e.target.value })}>
@@ -177,17 +236,17 @@ const goalMap: Record<string, string> = {
               <InfoRow label="Tuổi" value={formData.age} />
               <InfoRow label="Chiều cao" value={`${formData.height} cm`} />
               <InfoRow label="Cân nặng" value={`${formData.weight} kg`} />
-              
+
               {/* Chỗ này dùng Mapping để hiện tiếng Việt */}
-              <InfoRow 
-                label="Hoạt động" 
-                value={activityMap[formData.activityLevel] || '---'} 
+              <InfoRow
+                label="Hoạt động"
+                value={activityMap[formData.activityLevel] || '---'}
               />
-              
+
               <div style={{ gridColumn: 'span 2' }}>
-                <InfoRow 
-                  label="Mục tiêu" 
-                  value={goalMap[formData.goal] || '---'} 
+                <InfoRow
+                  label="Mục tiêu"
+                  value={goalMap[formData.goal] || '---'}
                 />
               </div>
             </div>
@@ -195,8 +254,8 @@ const goalMap: Record<string, string> = {
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ TDEE - Đã tách BMR và tinh gọn */}
-        <div className="stats-card" style={{ 
-          background: isEditing ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        <div className="stats-card" style={{
+          background: isEditing ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white', borderRadius: '24px', padding: '30px', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center'
         }}>
@@ -216,10 +275,10 @@ const goalMap: Record<string, string> = {
                 </div>
 
                 {/* Phần BMR - Tách xuống hàng riêng, cực kỳ tinh gọn */}
-                <div style={{ 
-                  marginTop: '20px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
+                <div style={{
+                  marginTop: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
                   gap: '2px'
                 }}>
@@ -228,11 +287,11 @@ const goalMap: Record<string, string> = {
                     BMR (Lượng calo tối thiểu để duy trì sự sống)
                   </span>
                   <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>
-                    {displayStats.bmr || Math.round(tdeeData?.profile?.bmr || 0)} <small style={{fontSize: '0.8rem', fontWeight: 400, opacity: 0.8}}>kcal</small>
+                    {displayStats.bmr || Math.round(tdeeData?.profile?.bmr || 0)} <small style={{ fontSize: '0.8rem', fontWeight: 400, opacity: 0.8 }}>kcal</small>
                   </span>
                 </div>
               </div>
-              
+
               {/* Macros Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                 <MacroBox label="Protein" value={displayStats.macros.protein} />
@@ -244,6 +303,7 @@ const goalMap: Record<string, string> = {
             <div style={{ textAlign: 'center' }}><p>Đang chờ dữ liệu...</p></div>
           )}
         </div>
+
       </div>
 
       <style>{`

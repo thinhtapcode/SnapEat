@@ -1,103 +1,72 @@
 version: '3.8'
 
 services:
-  postgres:
+  db:
     image: postgres:15-alpine
-    container_name: snapeat-postgres
-    environment:
-      POSTGRES_USER: snapeat
-      POSTGRES_PASSWORD: snapeat_password
-      POSTGRES_DB: snapeat_db
-    ports:
-      - "5432:5432"
+    container_name: snapeat-db
+    restart: always
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - snapeat-network
-
-  mongodb:
-    image: mongo:7
-    container_name: snapeat-mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: snapeat
-      MONGO_INITDB_ROOT_PASSWORD: snapeat_password
-      MONGO_INITDB_DATABASE: snapeat_logs
     ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - snapeat-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: snapeat-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+      - "5432:5432"
     networks:
       - snapeat-network
 
   backend:
     build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
+      context: ./apps/backend
+      dockerfile: Dockerfile
     container_name: snapeat-backend
+    restart: always
+    env_file:
+      - .env
     environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://snapeat:snapeat_password@postgres:5432/snapeat_db
-      MONGODB_URI: mongodb://snapeat:snapeat_password@mongodb:27017/snapeat_logs?authSource=admin
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      PORT: 3000
+      - DATABASE_URL=${DATABASE_URL}
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
-      - mongodb
-      - redis
+      - db
     networks:
       - snapeat-network
-    command: npm run start:prod
 
-  # ai-service:
-  #   build:
-  #     context: .
-  #     dockerfile: apps/ai-service/Dockerfile
-  #   container_name: snapeat-ai-service
-  #   environment:
-  #     PYTHON_ENV: production
-  #     BACKEND_URL: http://backend:3000
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - snapeat-network
-  #   command: uvicorn main:app --host 0.0.0.0 --port 8000
-
-  web:
+  ai-service:
     build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: snapeat-web
+      context: ./apps/ai-service
+      dockerfile: Dockerfile
+    container_name: snapeat-ai-service
+    restart: always
+    env_file:
+      - .env
     environment:
-      REACT_APP_API_URL: http://localhost:3000
-      REACT_APP_AI_SERVICE_URL: http://localhost:8000
+      - GEMINI_KEYS=${GEMINI_KEYS}
+      - BACKEND_URL=http://backend:3000
     ports:
-      - "80:80"
+      - "8000:8000"
     depends_on:
       - backend
-      # - ai-service
     networks:
       - snapeat-network
 
-volumes:
-  postgres_data:
-  mongodb_data:
-  redis_data:
+  frontend:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
+    container_name: snapeat-frontend
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+    networks:
+      - snapeat-network
 
 networks:
   snapeat-network:
     driver: bridge
+
+volumes:
+  postgres_data:

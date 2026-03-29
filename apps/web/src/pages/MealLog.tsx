@@ -4,6 +4,7 @@ import { mealApi, aiApi } from '../services/api'
 import { DailyMealList } from '../components/DailyMealList'
 import {Camera, Edit3, Upload, X} from 'lucide-react';
 import CameraScanner from '../components/CameraScanner';
+import { notify } from '../utils/notifier';
 // import { Camera, Plus, Trash2, CheckCircle, Loader2, Search } from 'lucide-react';
 
 
@@ -22,6 +23,7 @@ export default function MealLog() {
   const [suggestions, setSuggestions] = useState<FoodItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showManualForm, setShowManualForm] = useState(false)
@@ -30,6 +32,12 @@ export default function MealLog() {
   const [recognizedFoods, setRecognizedFoods] = useState<FoodItem[]>([])
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const MEAL_TYPES = [
+    { value: 'BREAKFAST', label: '🍳 Sáng' },
+    { value: 'LUNCH', label: '🍲 Trưa' },
+    { value: 'DINNER', label: '🌆 Tối' },
+    { value: 'SNACK', label: '🍎 Nhẹ' },
+  ];
   const [formData, setFormData] = useState({
     name: '',
     type: 'LUNCH',
@@ -45,7 +53,10 @@ export default function MealLog() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); 
+    };
   }, []);
 
   // Create meal mutation
@@ -65,10 +76,10 @@ export default function MealLog() {
         totalCarbs: '',
         totalFat: '',
       })
-      alert('Meal logged successfully!')
+      notify.success('Meal logged successfully!')
     },
     onError: (error: any) => {
-      alert(`Error logging meal: ${error.response?.data?.message || error.message}`)
+      notify.error(`Error logging meal: ${error.response?.data?.message || error.message}`)
     },
   })
   // State để quản lý việc chỉnh sửa
@@ -80,7 +91,7 @@ const deleteMeal = useMutation({
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['dailySummary'] });
     queryClient.invalidateQueries({ queryKey: ['meals'] });
-    alert('Đã xóa bữa ăn!');
+    notify.success('Đã xóa bữa ăn!');
   },
 });
 
@@ -93,7 +104,7 @@ const updateMeal = useMutation({
     setEditingMealId(null);
     setShowManualForm(false);
     setFormData({ name: '', type: 'LUNCH', totalCalories: '', totalProtein: '', totalCarbs: '', totalFat: '' });
-    alert('Cập nhật thành công!');
+    notify.success('Cập nhật thành công!');
   },
 });
 
@@ -136,9 +147,9 @@ const handleManualSubmit = (e: React.FormEvent) => {
     createMeal.mutate({ ...data, foods: [], imageUrl: selectedImage || undefined });
   }
 };
-  const handlePhotoScan = () => {
-    fileInputRef.current?.click()
-  }
+  // const handlePhotoScan = () => {
+  //   fileInputRef.current?.click()
+  // }
 
   const clearImage = () => {
     setSelectedImage(null)
@@ -178,7 +189,7 @@ const onFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (foodArray.length > 0) {
       const topFood = foodArray[0];
       setShowManualForm(true);
-      
+      notify.success('Đã phân tích ảnh!');
       // SỬA LẠI CÁCH SET FORM DATA ĐỂ TRÁNH LỖI ĐÈ STATE
       setFormData(prev => ({
         ...prev,
@@ -190,7 +201,7 @@ const onFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
       }));
     }
   } catch (error) {
-    alert("Lỗi phân tích ảnh. Thử lại nhé!");
+    notify.error("Lỗi phân tích ảnh. Thử lại nhé!");
   } finally {
     setIsAnalyzing(false);
   }
@@ -234,102 +245,90 @@ const handleCapture = async (base64Image: string) => {
       }));
     }
   } catch (error) {
-    alert("Lỗi phân tích camera.");
+    notify.error("Lỗi phân tích camera.");
   } finally {
     setIsAnalyzing(false);
   }
 };
 
-// 2. Cập nhật phần UI trong return ()
-// Tìm đến đoạn render Photo Upload Section và thay bằng:
-
-
-  
-
-  // Thêm vào bên trong Component MealLog, trước phần return
-
-// const handleNameBlur = async () => {
-//   // Chỉ tìm kiếm khi tên có ít nhất 2 ký tự và không phải do AI điền sẵn
-//   if (formData.name.length < 2 || recognizedFoods.length > 0) return;
-
-//   setIsAnalyzing(true); // Dùng chung state loading với AI photo
-//   try {
-//     // Gọi đến Endpoint mới của NestJS (FoodLibraryService)
-//     const food = await mealApi.searchFoodLibrary(formData.name);
-
-//     if (food) {
-//       setFormData(prev => ({
-//         ...prev,
-//         totalCalories: food.calories.toString(),
-//         totalProtein: food.protein.toString(),
-//         totalCarbs: food.carbs.toString(),
-//         totalFat: food.fat.toString(),
-//       }));
-//       // Bạn có thể dùng toast hoặc thông báo nhỏ để user biết số đã được cập nhật
-//     }
-//   } catch (error) {
-//     console.log("Món mới, người dùng sẽ tự nhập thông số");
-//   } finally {
-//     setIsAnalyzing(false);
-//   }
-// };
-//   const handleNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-//   const value = e.target.value;
-//   setFormData({ ...formData, name: value });
-
-//   if (value.length >= 2) {
-//     try {
-//       // Gọi API search từ database (Lớp 1 của Hybrid)
-//       const results = await mealApi.searchFoodLibrary(value);
-//       setSuggestions(Array.isArray(results) ? results : [results]);
-//       setShowSuggestions(true);
-//     } catch (error) {
-//       setSuggestions([]);
-//     }
-//   } else {
-//     setSuggestions([]);
-//     setShowSuggestions(false);
-//   }
-// };
 
 const handleNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const value = e.target.value;
   setFormData({ ...formData, name: value });
-
+  if (searchTimeoutRef.current) {
+    clearTimeout(searchTimeoutRef.current);
+  }
   if (value.trim().length >= 2) {
-    try {
-      const results = await mealApi.searchFoodLibrary(value);
-      
-      // Đảm bảo luôn luôn là mảng để tránh lỗi .map()
-      let finalData: FoodItem[] = [];
-      if (Array.isArray(results)) {
-        finalData = results;
-      } else if (results && typeof results === 'object') {
-        finalData = [results as FoodItem];
-      }
+    // 2. Đặt timeout mới: Đợi 500ms sau khi ngừng gõ mới gọi API
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await mealApi.searchFoodLibrary(value);
+        
+        let finalData: FoodItem[] = [];
+        if (Array.isArray(results)) {
+          finalData = results;
+        } else if (results && typeof results === 'object') {
+          finalData = [results as FoodItem];
+        }
 
-      setSuggestions(finalData);
-      setShowSuggestions(finalData.length > 0);
-    } catch (error) {
-      console.error("Search error:", error);
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
+        setSuggestions(finalData);
+        setShowSuggestions(finalData.length > 0);
+      } catch (error) {
+        console.error("Search error:", error);
+        notify.error("Lỗi tìm kiếm thực phẩm.");
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 500); // ⏱️ 500ms là tỷ lệ vàng giữa mượt mà và tốc độ
   } else {
     setShowSuggestions(false);
   }
 };
 
-const selectSuggestion = (food: FoodItem) => {
-    setFormData({
-      ...formData,
-      name: food.name,
-      totalCalories: food.calories.toString(),
-      totalProtein: food.protein.toString(),
-      totalCarbs: food.carbs.toString(),
-      totalFat: food.fat.toString(),
-    });
-    setShowSuggestions(false);
+const [quantity, setQuantity] = useState<number>(100);
+const [baseFood, setBaseFood] = useState<FoodItem | null>(null);
+
+const selectSuggestion = (food: FoodItem & { defaultWeight?: number; servingSize?: string }) => {
+  setBaseFood(food);
+  
+  // 1. Lấy trọng lượng mặc định (Nếu nhóm 1 là 100g, nếu nhóm 2 là 1 phần)
+  const initQty = food.defaultWeight || 100;
+  setQuantity(initQty);
+
+  // 2. Kiểm tra xem món này tính theo Gram hay tính theo Suất (Tô, Dĩa, Ly...)
+  const isGramSystem = !food.servingSize || food.servingSize.toLowerCase() === 'gram';
+
+  // 3. Tính toán Hệ số nhân (Ratio)
+  // - Nếu là Gram: Lấy (Số lượng / 100)
+  // - Nếu là Suất: Giữ nguyên số lượng (Suất * 1 = Suất)
+  const ratio = isGramSystem ? initQty / 100 : initQty;
+
+  setFormData({
+    ...formData,
+    name: food.name,
+    totalCalories: (food.calories * ratio).toFixed(1),
+    totalProtein: (food.protein * ratio).toFixed(1),
+    totalCarbs: (food.carbs * ratio).toFixed(1),
+    totalFat: (food.fat * ratio).toFixed(1),
+  });
+
+  setShowSuggestions(false);
+};
+  const handleQuantityChange = (newQty: number) => {
+    setQuantity(newQty);
+
+    if (baseFood) {
+      const isGramSystem = !baseFood.servingSize || baseFood.servingSize.toLowerCase() === 'gram';
+      const ratio = isGramSystem ? newQty / 100 : newQty;
+
+      setFormData({
+        ...formData,
+        totalCalories: (baseFood.calories * ratio).toFixed(1),
+        totalProtein: (baseFood.protein * ratio).toFixed(1),
+        totalCarbs: (baseFood.carbs * ratio).toFixed(1),
+        totalFat: (baseFood.fat * ratio).toFixed(1),
+      });
+    }
   };
   const aiMainButtonStyle: React.CSSProperties = {
   width: '100%',
@@ -540,6 +539,36 @@ const manualButtonStyle: React.CSSProperties = {
         <div className="card" style={{ padding: '25px', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: 'none' }}>
           <h3 style={{ marginBottom: '20px' }}>Chi tiết bữa ăn</h3>
           <form onSubmit={handleManualSubmit}>
+            {/* 🔥 MỚI THÊM: CHỌN MEAL TYPE GỌN GÀNG */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                Thời điểm ăn
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {MEAL_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button" // 👈 Quan trọng: Không cho nó trigger submit form
+                    onClick={() => setFormData({ ...formData, type: type.value })}
+                    style={{
+                      flex: 1,
+                      padding: '12px 8px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      backgroundColor: formData.type === type.value ? '#4CAF50' : '#f3f4f6',
+                      color: formData.type === type.value ? 'white' : '#4b5563',
+                      boxShadow: formData.type === type.value ? '0 4px 12px rgba(76, 175, 80, 0.3)' : 'none',
+                    }}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ position: 'relative', marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>Tên món ăn</label>
               <input
@@ -579,6 +608,67 @@ const manualButtonStyle: React.CSSProperties = {
                 <label>Fat (F)</label>
                 <input type="number" value={formData.totalFat} onChange={(e) => setFormData({...formData, totalFat: e.target.value})} />
               </div>
+            </div>
+
+            {/* ⚖️ NÂNG CẤP UI/UX: Ô NHẬP SỐ LƯỢNG THÔNG MINH */}
+            <div style={{ marginBottom: '25px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontWeight: 'bold', fontSize: '0.9rem', color: '#334155' }}>
+                <span>🔢 Số lượng tiêu thụ</span>
+                <span style={{ color: '#4CAF50', fontWeight: '800' }}>
+                  Đơn vị: {baseFood?.servingSize || 'Gram'}
+                </span>
+              </label>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Nút Trừ (-) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const step = (!baseFood?.servingSize || baseFood.servingSize.toLowerCase() === 'gram') ? 50 : 0.5;
+                    const newQty = Math.max(0, quantity - step);
+                    handleQuantityChange(newQty);
+                  }}
+                  style={{
+                    width: '45px', height: '45px', borderRadius: '10px', border: 'none',
+                    backgroundColor: '#e2e8f0', color: '#0f172a', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center'
+                  }}
+                >
+                  -
+                </button>
+
+                {/* Input hiển thị số */}
+                <input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => handleQuantityChange(parseFloat(e.target.value) || 0)}
+                  style={{
+                    flex: 1, height: '45px', textAlign: 'center', fontSize: '1.1rem', fontWeight: 'bold',
+                    borderRadius: '10px', border: '2px solid #cbd5e1', backgroundColor: 'white'
+                  }}
+                />
+
+                {/* Nút Cộng (+) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const step = (!baseFood?.servingSize || baseFood.servingSize.toLowerCase() === 'gram') ? 50 : 0.5;
+                    const newQty = quantity + step;
+                    handleQuantityChange(newQty);
+                  }}
+                  style={{
+                    width: '45px', height: '45px', borderRadius: '10px', border: 'none',
+                    backgroundColor: '#4CAF50', color: 'white', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center'
+                  }}
+                >
+                  +
+                </button>
+              </div>
+
+              <p style={{ margin: '8px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                💡 Mẹo: Hệ thống tự động chia tỉ lệ Calo/Macros khi bạn tăng giảm số lượng!
+              </p>
             </div>
 
             <button type="submit" className="primary" style={{ width: '100%', padding: '15px', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', backgroundColor: '#4CAF50', border: 'none', color: 'white', cursor: 'pointer' }}>

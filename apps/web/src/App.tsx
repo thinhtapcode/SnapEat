@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from './store/authStore'
-import FloatingAddButton from './components/FAB';
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -11,6 +10,8 @@ import Analytics from './pages/Analytics'
 import Profile from './pages/Profile'
 import Layout from './components/Layout'
 import Welcome from './pages/Welcome'
+import { Toaster } from 'react-hot-toast';
+import XoaiChatBot from './pages/XoaiChatBot'
 
 const queryClient = new QueryClient()
 
@@ -41,9 +42,10 @@ function App() {
             <Route path="meal-plans" element={<MealPlan />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="xoai-chat" element={<XoaiChatBot />} />
           </Route>
         </Routes>
-         
+        <Toaster position="top-right" reverseOrder={false} />
       </Router>
     </QueryClientProvider>
   )

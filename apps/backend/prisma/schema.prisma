@@ -45,8 +45,30 @@ model UserProfile {
   targetProtein  Float?    // Thêm trường này
   targetCarbs    Float?    // Thêm trường này
   targetFat      Float?    // Thêm trường này
+  jobNature      JobNature?    
+  eatingHabits   EatingHabit[] 
+  cookingSkill   CookingSkill?
+  isSurveyCompleted Boolean @default(false)
 
   @@map("user_profiles")
+}
+enum JobNature {
+  SEDENTARY       // Ngồi nhiều (Văn phòng, Coder)
+  MODERATE_STANCE // Đứng/Đi lại vừa phải (Bán hàng, giáo viên)
+  HEAVY_LABOR     // Lao động nặng (Shipper, Vận động viên)
+}
+
+enum EatingHabit {
+  SKIP_BREAKFAST // Hay bỏ bữa sáng
+  NIGHT_SNACKER  // Hay ăn vặt đêm muộn
+  SWEET_TOOTH    // Thèm ngọt, trà sữa
+  BALANCED       // Ăn uống quy củ, kỷ luật
+}
+
+enum CookingSkill {
+  EAT_OUT        // Ăn ngoài tiệm 100%
+  OCCASIONAL     // Nửa này nửa nọ (Bữa nấu bữa tiệm)
+  MEAL_PREP      // Tự nấu hoàn toàn
 }
 
 enum ActivityLevel {
@@ -133,7 +155,8 @@ model FoodLibrary {
   protein     Float
   carbs       Float
   fat         Float
-  servingSize String   @default("100g")
+  servingSize    String   @default("Gram") // Ví dụ: Gram, Tô, Dĩa, Suất
+  defaultWeight  Float    @default(100)
   isVerified  Boolean  @default(false) // Món do admin xác nhận hoặc do user đóng góp
   createdAt   DateTime @default(now())
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { mealPlanApi, tdeeApi } from '../services/api'
+import {notify} from '../utils/notifier';
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -43,9 +44,9 @@ export default function MealPlan() {
       setAppliedPlanId(null);
       localStorage.removeItem('activePlanId');
     }
-    alert('Đã xóa kế hoạch thành công!');
+    notify.success('Đã xóa kế hoạch thành công!');
   },
-  onError: () => alert('Không thể xóa kế hoạch này.')
+  onError: () => notify.error('Không thể xóa kế hoạch này.')
 });
 
   const updatePlan = useMutation({
@@ -62,7 +63,7 @@ export default function MealPlan() {
 
     setShowForm(false);
     setEditingPlanId(null);
-    alert('Cập nhật và đồng bộ kế hoạch thành công! ✨');
+    notify.success('Cập nhật và đồng bộ kế hoạch thành công! ✨');
   }
 });
   const handleEditClick = (plan: any) => {
@@ -104,11 +105,11 @@ export default function MealPlan() {
         carbs: '',
         fat: '',
       })
-      alert('Meal plan created successfully!')
+      notify.success('Meal plan created successfully!')
     },
     onError: (error: any) => {
       console.error('Error creating meal plan:', error)
-      alert('Failed to create meal plan. Please try again.')
+      notify.error('Failed to create meal plan. Please try again.')
     },
   })
 
@@ -117,14 +118,14 @@ export default function MealPlan() {
   
   const startDate = new Date(formData.startDate);
   const endDate = new Date(formData.endDate);
-  if (endDate <= startDate) return alert('Ngày kết thúc phải sau ngày bắt đầu');
+  if (endDate <= startDate) return notify.error('Ngày kết thúc phải sau ngày bắt đầu');
   
   const calories = parseFloat(formData.dailyCalories);
   const pPercent = parseFloat(formData.protein);
   const cPercent = parseFloat(formData.carbs);
   const fPercent = parseFloat(formData.fat);
 
-  if (pPercent + cPercent + fPercent !== 100) return alert('Tổng phải bằng 100%');
+  if (pPercent + cPercent + fPercent !== 100) return notify.error('Tổng phải bằng 100%');
 
   const proteinGram = Math.round((calories * (pPercent / 100)) / 4);
   const carbsGram = Math.round((calories * (cPercent / 100)) / 4);
@@ -183,11 +184,11 @@ const applyMacroMutation = useMutation({
   mutationFn: (planId: string) => mealPlanApi.apply(planId), 
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['tdee'] });
-    alert('Đã cập nhật mục tiêu dinh dưỡng hiện tại theo Template này!');
+    notify.success('Đã cập nhật mục tiêu dinh dưỡng hiện tại theo Template này!');
   },
   onError: (error) => {
     console.error("Lỗi khi áp dụng template:", error);
-    alert("Không thể áp dụng template. Vui lòng thử lại.");
+    notify.error("Không thể áp dụng template. Vui lòng thử lại.");
   }
 });
 
@@ -202,7 +203,7 @@ const resetTargetMutation = useMutation({
     queryClient.invalidateQueries({ queryKey: ['tdee'] });
     queryClient.invalidateQueries({ queryKey: ['mealPlans'] });
     
-    alert('Đã quay lại sử dụng mục tiêu dinh dưỡng khuyến nghị!');
+    notify.success('Đã quay lại sử dụng mục tiêu dinh dưỡng khuyến nghị!');
   }
 });
 
@@ -442,7 +443,7 @@ return (
               <button 
                 onClick={() => { 
                   if (isActive) {
-                    alert('Không thể xóa kế hoạch đang được sử dụng. Vui lòng quay lại mức khuyến nghị hoặc đổi kế hoạch trước!');
+                    notify.error('Không thể xóa kế hoạch đang được sử dụng. Vui lòng quay lại mức khuyến nghị hoặc đổi kế hoạch trước!');
                     return;
                   }
                   if(window.confirm('Bạn có chắc muốn xóa template này?')) deletePlan.mutate(plan.id) 

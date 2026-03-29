@@ -1,30 +1,37 @@
-# Web Dockerfile
-FROM node:18-alpine AS builder
+# Stage 1: Build Image
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
-COPY apps/web/package.json ./apps/web/
+COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy application source
 COPY . .
 
-# Build the application
-RUN npm run build --workspace=apps/web
+# Pass VITE_API_URL via Build Arguments to be injected into the built app
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
 
-# Production stage with Nginx
+# Build the React/Vite application
+RUN npm run build
+
+# Stage 2: Nginx Web Server
 FROM nginx:alpine
 
-# Copy built files to nginx
-COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
+# Remove default nginx static assets
+RUN rm -rf /usr/share/nginx/html/*
 
-# Copy nginx configuration
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy built app to nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Replace with custom nginx configuration for SPA routing
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

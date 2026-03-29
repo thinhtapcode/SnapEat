@@ -1,190 +1,106 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
-import axios from 'axios';
-import * as qs from 'qs';
+import { GoogleGenAI } from '@google/genai';
 
 @Injectable()
 export class FoodLibraryService {
   private readonly logger = new Logger(FoodLibraryService.name);
-  
-  private readonly FATSECRET_CLIENT_ID = 'fd86cd17944143efa37de75d4ecab223';
-  private readonly FATSECRET_CLIENT_SECRET = '18216b7807bb4b3cadd7000d30f6ea2a';
-  private readonly AI_SERVICE_URL = 'http://localhost:8000/api/analyze-text';
-  
-  private accessToken: string | null = null;
-  private tokenExpires: number = 0;
+  private ai: GoogleGenAI;
 
-  constructor(private prisma: PrismaService) {}
-
-  private async getAccessToken() {
-    const now = Date.now();
-    if (this.accessToken && now < this.tokenExpires) return this.accessToken;
-
-    this.logger.log('Đang lấy Access Token mới từ FatSecret...');
-    const auth = Buffer.from(`${this.FATSECRET_CLIENT_ID}:${this.FATSECRET_CLIENT_SECRET}`).toString('base64');
-    
-    const response = await axios.post(
-      'https://oauth.fatsecret.com/connect/token',
-      qs.stringify({ grant_type: 'client_credentials', scope: 'basic' }),
-      { headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
-
-    this.accessToken = response.data.access_token;
-    this.tokenExpires = now + response.data.expires_in * 1000;
-    return this.accessToken;
+  constructor(private prisma: PrismaService) {
+    // 🤖 Khởi tạo SDK Gemini trực tiếp trong Service
+    this.ai = new GoogleGenAI({ apiKey: process.env.FOODAI_API_KEY! });
   }
 
   async searchFood(query: string) {
     const normalizedQuery = query.toLowerCase().trim();
 
-    // LỚP 1: LOCAL DATABASE
+    // 🌟 LỚP 1: LOCAL DATABASE (Tìm kiếm ưu tiên hàng đầu)
     const localResults = await this.prisma.foodLibrary.findMany({
       where: { name: { contains: normalizedQuery, mode: 'insensitive' } },
       take: 5,
     });
 
-    if (localResults.length > 0) return localResults;
+    if (localResults.length > 0) {
+      this.logger.log(`[Local DB] Tìm thấy món: "${normalizedQuery}" trong hệ thống.`);
+      return localResults;
+    }
 
-    // LỚP 2: GEMINI AI (Hoặc AI Service của bạn)
-    // Chúng ta ưu tiên AI trước FatSecret vì AI hiểu được "Phở Bò thêm gân"
+    // 🌟 LỚP 2:  AI (Chỉ gọi khi DB rỗng)
+    this.logger.log(`[Local DB] Không tìm thấy "${normalizedQuery}". Đang chuyển cho AI...`);
     const aiResult = await this.callAIService(normalizedQuery);
-    if (aiResult) return [aiResult];
 
-    // LỚP 3: FATSECRET (Dự phòng cuối cùng)
-    const fatSecretResult = await this.findFatSecretNutrition(normalizedQuery);
-    return fatSecretResult ? [fatSecretResult] : [];
+    return aiResult ? [aiResult] : [];
   }
-
-  // async findNutrition(query: string) {
-  //   const normalizedQuery = query.toLowerCase().trim();
-
-  //   const localFood = await this.prisma.foodLibrary.findFirst({
-  //     where: { name: { contains: normalizedQuery, mode: 'insensitive' } },
-  //   });
-  //   if (localFood) return localFood;
-
-  //   try {
-  //   const token = await this.getAccessToken();
-    
-  //   // 1. Tìm kiếm thực phẩm (Sử dụng URL mới theo tài liệu)
-  //   const searchRes = await axios.get('https://platform.fatsecret.com/rest/foods/search/v1', {
-  //     params: {
-  //       search_expression: query,
-  //       format: 'json',
-  //       max_results: 1
-  //     },
-  //     headers: { Authorization: `Bearer ${token}` }
-  //   });
-
-  //   const foodFound = searchRes.data.foods?.food;
-  //   this.logger.log(`FatSecret tìm kiếm [${query}]: ${foodFound ? 'Thấy' : 'Không thấy'}`);
-
-  //   if (foodFound) {
-  //     // 2. Lấy chi tiết - Sử dụng food.get.v4 hoặc v5 như tài liệu hướng dẫn
-  //     const detailRes = await axios.get('https://platform.fatsecret.com/rest/food/v4', {
-  //       params: {
-  //         food_id: foodFound.food_id,
-  //         format: 'json'
-  //       },
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
-
-  //     const servings = detailRes.data.food.servings.serving;
-  //     const nutrients = Array.isArray(servings) ? servings[0] : servings;
-      
-  //     if (nutrients) {
-  //       return await this.prisma.foodLibrary.create({
-  //         data: {
-  //           name: foodFound.food_name,
-  //           calories: parseFloat(nutrients.calories) || 0,
-  //           protein: parseFloat(nutrients.protein) || 0,
-  //           carbs: parseFloat(nutrients.carbohydrate) || 0,
-  //           fat: parseFloat(nutrients.fat) || 0,
-  //           servingSize: `${nutrients.metric_serving_amount || 100}${nutrients.metric_serving_unit || 'g'}`,
-  //         },
-  //       });
-  //     }
-  //   }
-  // } catch (error: any) {
-  //   this.logger.error(`[FatSecret Error]: ${error.response?.data?.error?.message || error.message}`);
-  // }
-
-  // // Luôn gọi AI nếu FatSecret không có kết quả
-  // return this.callAIService(query);
-
-  // }
 
   private async callAIService(query: string) {
-    this.logger.log(`[AI] Đang phân tích: ${query}`);
     try {
-      const response = await axios.post(this.AI_SERVICE_URL, { text: query });
-      const aiData = response.data;
+      this.logger.log(`[AI] Đang phân tích dinh dưỡng cho: "${query}"`);
 
-      // Giả sử AI trả về: { name, calories, protein, carbs, fat, servingSize }
-      if (aiData && !aiData.error) {
-        return await this.prisma.foodLibrary.create({
-          data: {
-            name: aiData.name || query,
-            calories: aiData.calories || 0,
-            protein: aiData.protein || 0,
-            carbs: aiData.carbs || 0,
-            fat: aiData.fat || 0,
-            servingSize: aiData.servingSize || '100g',
-          },
-        });
+      const prompt = `
+      Bạn là Bé Xoài - Trợ lý AI phân tích Calo cho app SnapEat.
+      Hãy phân tích giá trị dinh dưỡng cho món ăn: "${query}".
+
+      🎯 Quy tắc chuẩn hóa ép buộc (Rất quan trọng):
+      1. Nếu là THỰC PHẨM THÔ/NGUYÊN LIỆU (Ức gà, chuối, gạo...): 
+         - servingSize = "Gram"
+         - defaultWeight = 100
+         - Tính calo cho 100g.
+      2. Nếu là MÓN ĂN CHẾ BIẾN/CƠM TIỆM (Phở bò, bánh mì, cơm sườn...):
+         - servingSize = "Tô", "Dĩa", "Ổ", "Phần" (Tùy món)
+         - defaultWeight = 1 (Tương ứng 1 phần ăn)
+         - Tính calo cho 1 phần ăn đó.
+
+      Hãy trả về kết quả dưới dạng JSON thuần túy (KHÔNG CHỨA MARKDOWN), theo đúng Schema sau:
+      {
+        "name": string (Tên món chuẩn hóa tiếng Việt, ví dụ: "Phở Bò"),
+        "calories": number,
+        "protein": number,
+        "carbs": number,
+        "fat": number,
+        "servingSize": string (Chỉ chọn 1 trong: "Gram", "Tô", "Dĩa", "Phần", "Ổ", "Cái"),
+        "defaultWeight": number (100 đối với Gram, 1 đối với các đơn vị khác)
       }
-    } catch (error) {
-      this.logger.warn(`[AI Service] Không phản hồi hoặc lỗi. Chuyển hướng dự phòng...`);
-      return null;
-    }
-  }
+    `;
 
-  private async findFatSecretNutrition(query: string) {
-    try {
-      const token = await this.getAccessToken();
-      // Thực hiện gọi FatSecret như cũ ở đây...
-      // (Giữ nguyên logic search v1 và get v5 của bạn)
-      // 1. Tìm kiếm thực phẩm (Sử dụng URL mới theo tài liệu)
-    const searchRes = await axios.get('https://platform.fatsecret.com/rest/foods/search/v1', {
-      params: {
-        search_expression: query,
-        format: 'json',
-        max_results: 1
-      },
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    const foodFound = searchRes.data.foods?.food;
-    this.logger.log(`FatSecret tìm kiếm [${query}]: ${foodFound ? 'Thấy' : 'Không thấy'}`);
-
-    if (foodFound) {
-      // 2. Lấy chi tiết - Sử dụng food.get.v4 hoặc v5 như tài liệu hướng dẫn
-      const detailRes = await axios.get('https://platform.fatsecret.com/rest/food/v4', {
-        params: {
-          food_id: foodFound.food_id,
-          format: 'json'
-        },
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.2, // Giảm temperature để AI bám chặt rules hơn
+        }
       });
 
-      const servings = detailRes.data.food.servings.serving;
-      const nutrients = Array.isArray(servings) ? servings[0] : servings;
-      
-      if (nutrients) {
-        return await this.prisma.foodLibrary.create({
-          data: {
-            name: foodFound.food_name,
-            calories: parseFloat(nutrients.calories) || 0,
-            protein: parseFloat(nutrients.protein) || 0,
-            carbs: parseFloat(nutrients.carbohydrate) || 0,
-            fat: parseFloat(nutrients.fat) || 0,
-            servingSize: `${nutrients.metric_serving_amount || 100}${nutrients.metric_serving_unit || 'g'}`,
-          },
+      const aiData = JSON.parse(response.text);
+
+      // 💾 Insert trực tiếp vào Postgres khớp 100% Prisma Schema
+      this.logger.log(`[AI] Phân tích thành công món "${query}". Đang lưu vào DB...`);
+
+      return await this.prisma.foodLibrary.create({
+        data: {
+          name: aiData.name || query, // Nếu AI quên name thì lấy query cũ
+          calories: Number(aiData.calories) || 0,
+          protein: Number(aiData.protein) || 0,
+          carbs: Number(aiData.carbs) || 0,
+          fat: Number(aiData.fat) || 0,
+          servingSize: aiData.servingSize || 'Gram',
+          defaultWeight: Number(aiData.defaultWeight) || 100,
+          isVerified: false, // AI tự tạo nên để false, chờ admin duyệt
+        },
+      });
+    } catch (error) {
+      // ⚠️ Lỗi kinh điển của @unique: Nếu AI vô tình sinh ra Name đã có trong DB, Prisma sẽ crash.
+      // Xử lý bằng cách nếu bị trùng Name thì không create nữa, mà dùng luôn bản ghi đang có.
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+        this.logger.warn(`[Prisma] Trùng lặp trường Unique cho "${query}". Lấy bản ghi có sẵn.`);
+        return await this.prisma.foodLibrary.findUnique({
+          where: { name: query }
         });
       }
+
+      this.logger.error(`[AI] Gặp lỗi: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
     }
-  } catch (error: any) {
-    this.logger.error(`[FatSecret Error]: ${error.response?.data?.error?.message || error.message}`);
-  }
   }
 }
